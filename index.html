@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskForge — Codeforces-Style Task Tracker with Gmail Notifications</title>
+    <meta name="description" content="TaskForge is a high-performance task management system featuring Codeforces-style activity heatmaps, instant quick-add, and automated Gmail notifications for Sports, Chores, and Productivity.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Ambient Background Lighting -->
+    <div class="ambient-bg" aria-hidden="true">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header id="app-header">
+        <div class="header-inner">
+            <div class="logo-group">
+                <div class="logo-icon" aria-hidden="true">
+                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                        <rect x="2" y="2" width="10" height="10" rx="3" fill="url(#g1)" opacity="0.95"/>
+                        <rect x="16" y="2" width="10" height="10" rx="3" fill="url(#g2)" opacity="0.85"/>
+                        <rect x="2" y="16" width="10" height="10" rx="3" fill="url(#g3)" opacity="0.75"/>
+                        <rect x="16" y="16" width="10" height="10" rx="3" fill="url(#g1)" opacity="0.5"/>
+                        <defs>
+                            <linearGradient id="g1" x1="0" y1="0" x2="12" y2="12"><stop stop-color="#6C5CE7"/><stop offset="1" stop-color="#a29bfe"/></linearGradient>
+                            <linearGradient id="g2" x1="0" y1="0" x2="12" y2="12"><stop stop-color="#00cec9"/><stop offset="1" stop-color="#81ecec"/></linearGradient>
+                            <linearGradient id="g3" x1="0" y1="0" x2="12" y2="12"><stop stop-color="#fdcb6e"/><stop offset="1" stop-color="#ffeaa7"/></linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="logo-text">TaskForge</h1>
+                    <span class="logo-subtext">Codeforces Edition</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <!-- Streak Badge -->
+                <div class="streak-badge" id="streakBadge" title="Combined daily streak across all categories">
+                    <span class="fire-icon">🔥</span>
+                    <span id="streakCount">0</span> day streak
+                </div>
+
+
+                <!-- Gmail Notification Inbox Bell -->
+                <button class="btn-icon" id="gmailInboxBtn" title="Gmail Notifications Log" aria-label="Gmail Notifications">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span class="notification-badge" id="unreadEmailBadge">0</span>
+                </button>
+
+                <!-- Email / App Settings -->
+                <button class="btn-icon" id="settingsBtn" title="Email & Notification Settings" aria-label="Settings">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 13a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5"/><path d="M17.4 10c0-.6-.4-1.1-1-1.2l-1-.2a6.5 6.5 0 00-.6-1.4l.6-.9c.3-.5.2-1.1-.2-1.5l-.1-.1c-.4-.4-1-.5-1.5-.2l-.9.6a6.5 6.5 0 00-1.4-.6l-.2-1c-.1-.6-.6-1-1.2-1h-.1c-.6 0-1.1.4-1.2 1l-.2 1a6.5 6.5 0 00-1.4.6l-.9-.6c-.5-.3-1.1-.2-1.5.2l-.1.1c-.4.4-.5 1-.2 1.5l.6.9a6.5 6.5 0 00-.6 1.4l-1 .2c-.6.1-1 .6-1 1.2v.1c0 .6.4 1.1 1 1.2l1 .2a6.5 6.5 0 00.6 1.4l-.6.9c-.3.5-.2 1.1.2 1.5l.1.1c.4.4 1 .5 1.5.2l.9-.6a6.5 6.5 0 001.4.6l.2 1c.1.6.6 1 1.2 1h.1c.6 0 1.1-.4 1.2-1l.2-1a6.5 6.5 0 001.4-.6l.9.6c.5.3 1.1.2 1.5-.2l.1-.1c.4-.4.5-1 .2-1.5l-.6-.9a6.5 6.5 0 00.6-1.4l1-.2c.6-.1 1-.6 1-1.2V10z" stroke="currentColor" stroke-width="1.5"/></svg>
+                </button>
+
+                <!-- Detailed Task Modal Button -->
+                <button class="btn-primary" id="addTaskBtn">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><line x1="9" y1="3" x2="9" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="9" x2="15" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <span>Detailed Task</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="app-main">
+        <!-- Live Gmail Notification Banner (pops down when triggered) -->
+        <div class="gmail-live-banner" id="gmailLiveBanner">
+            <div class="gmail-banner-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#EA4335"/><path d="M22 6l-10 7L2 6" stroke="#FFFFFF" stroke-width="2"/></svg>
+            </div>
+            <div class="gmail-banner-content">
+                <div class="gmail-banner-title" id="gmailBannerTitle">Gmail Notification Delivered</div>
+                <div class="gmail-banner-body" id="gmailBannerBody">Reminder sent for task</div>
+            </div>
+            <div class="gmail-banner-actions">
+                <button class="btn-banner-view" id="gmailBannerViewBtn">View Email</button>
+                <button class="btn-banner-close" id="gmailBannerCloseBtn" aria-label="Close notification">&times;</button>
+            </div>
+        </div>
+
+        <!-- Global Stats Bar -->
+        <section class="stats-bar" id="statsBar">
+            <div class="stat-card">
+                <div class="stat-value" id="totalTasks">0</div>
+                <div class="stat-label">Total Tasks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value text-accent-green" id="completedTasks">0</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value text-accent-cyan" id="pendingTasks">0</div>
+                <div class="stat-label">Pending</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value text-accent-coral" id="overdueTasks">0</div>
+                <div class="stat-label">Overdue</div>
+            </div>
+        </section>
+
+        <!-- INSTANT QUICK-ADD BAR ("i type something and its a task") -->
+        <section class="quick-add-container" id="quickAddSection">
+            <form id="quickAddForm" class="quick-add-form" autocomplete="off">
+                <div class="quick-add-main-row">
+                    <div class="quick-input-wrapper">
+                        <span class="quick-input-icon">⚡</span>
+                        <input 
+                            type="text" 
+                            id="quickInput" 
+                            class="quick-input" 
+                            placeholder="Type a task and hit Enter... (e.g. 'Morning 5km Run', 'Clean room', 'Solve Codeforces Round #940')" 
+                            required 
+                            autofocus
+                        />
+                    </div>
+                    <button type="submit" class="quick-submit-btn">
+                        <span>Add Task</span>
+                        <kbd>↵</kbd>
+                    </button>
+                </div>
+
+                <div class="quick-add-meta-row">
+                    <!-- Quick Category Pills -->
+                    <div class="quick-category-pills">
+                        <span class="quick-pill-label">Category:</span>
+                        <button type="button" class="quick-cat-btn sports-btn" data-cat="sports">
+                            <span class="cat-dot sports"></span> Sports
+                        </button>
+                        <button type="button" class="quick-cat-btn chores-btn" data-cat="chores">
+                            <span class="cat-dot chores"></span> Chores
+                        </button>
+                        <button type="button" class="quick-cat-btn prod-btn active" data-cat="productivity">
+                            <span class="cat-dot productivity"></span> Productivity
+                        </button>
+                    </div>
+
+                    <!-- Quick Timing & Notification Selectors -->
+                    <div class="quick-timing-selectors">
+                        <div class="quick-select-group">
+                            <label for="quickDeadlinePreset">Deadline:</label>
+                            <select id="quickDeadlinePreset" class="quick-select">
+                                <option value="today-eod">Today (11:59 PM)</option>
+                                <option value="tomorrow-9am">Tomorrow (9:00 AM)</option>
+                                <option value="tomorrow-eod" selected>Tomorrow (11:59 PM)</option>
+                                <option value="in-1-hour">In 1 Hour</option>
+                                <option value="in-2-hours">In 2 Hours</option>
+                                <option value="in-3-days">In 3 Days</option>
+                                <option value="custom">Custom Time...</option>
+                            </select>
+                            <input type="datetime-local" id="quickCustomDeadline" class="quick-custom-time hidden" />
+                        </div>
+
+                        <div class="quick-select-group">
+                            <label for="quickReminderPreset">Gmail Alert:</label>
+                            <select id="quickReminderPreset" class="quick-select">
+                                <option value="15m" selected>15 min before</option>
+                                <option value="1h">1 hour before</option>
+                                <option value="3h">3 hours before</option>
+                                <option value="1d">1 day before</option>
+                                <option value="at-deadline">At deadline</option>
+                                <option value="none">No reminder</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <!-- SECTION 1: SPORTS -->
+        <section class="category-section" id="section-sports" data-category="sports">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <div class="section-icon sports-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="currentColor" stroke-width="1.5"/><path d="M12 3c0 0 4 5 4 9s-4 9-4 9" stroke="currentColor" stroke-width="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>
+                    </div>
+                    <div>
+                        <div class="title-with-badge">
+                            <h2>Sports</h2>
+                            <span class="cf-rank-badge rank-cyan" id="sports-rank">Specialist</span>
+                        </div>
+                        <span class="task-count" id="sports-count">0 tasks</span>
+                    </div>
+                </div>
+
+                <!-- Codeforces Style Stat Pills -->
+                <div class="cf-stats-strip">
+                    <div class="cf-stat-pill" title="Current consecutive active days in Sports">
+                        <span class="cf-stat-title">Current Streak</span>
+                        <span class="cf-stat-val text-sports" id="sports-current-streak">0 days</span>
+                    </div>
+                    <div class="cf-stat-pill" title="Longest consecutive active streak in Sports">
+                        <span class="cf-stat-title">Max Streak</span>
+                        <span class="cf-stat-val" id="sports-max-streak">0 days</span>
+                    </div>
+                    <div class="cf-stat-pill" title="Total active days with sports completed in the last year">
+                        <span class="cf-stat-title">Active Days</span>
+                        <span class="cf-stat-val" id="sports-active-days">0</span>
+                    </div>
+                    <div class="cf-stat-pill" title="All-time sports tasks completed">
+                        <span class="cf-stat-title">Completed</span>
+                        <span class="cf-stat-val" id="sports-total-done">0</span>
+                    </div>
+                    <button class="btn-collapse" data-target="sports" aria-label="Toggle section">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="section-body" id="sports-body">
+                <!-- Codeforces Heatmap -->
+                <div class="heatmap-container">
+                    <div class="heatmap-header">
+                        <div class="heatmap-title-wrap">
+                            <span class="heatmap-badge">Codeforces Activity</span>
+                            <span class="heatmap-subtitle" id="sports-heatmap-summary">0 submissions in the last year</span>
+                        </div>
+                        <div class="heatmap-legend">
+                            <span class="legend-label">Less</span>
+                            <div class="legend-cell" style="background: var(--heatmap-0)"></div>
+                            <div class="legend-cell" style="background: var(--sports-1)"></div>
+                            <div class="legend-cell" style="background: var(--sports-2)"></div>
+                            <div class="legend-cell" style="background: var(--sports-3)"></div>
+                            <div class="legend-cell" style="background: var(--sports-4)"></div>
+                            <span class="legend-label">More</span>
+                        </div>
+                    </div>
+
+                    <div class="heatmap-wrapper">
+                        <div class="heatmap-months" id="sports-months"></div>
+                        <div class="heatmap-grid-wrapper">
+                            <div class="heatmap-days">
+                                <span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span><span>Sun</span>
+                            </div>
+                            <div class="heatmap-grid" id="sports-heatmap"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Inline Quick Add -->
+                <div class="section-inline-add">
+                    <input type="text" class="inline-add-input" id="inline-add-sports" placeholder="+ Quick add Sports task... (Press Enter)" />
+                </div>
+
+                <!-- Task List -->
+                <div class="task-list" id="sports-tasks"></div>
+                <div class="empty-state" id="sports-empty">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    <p>No sports tasks yet. Type above to add your first workout!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: CHORES -->
+        <section class="category-section" id="section-chores" data-category="chores">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <div class="section-icon chores-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2"/><path d="M9 22V12h6v10" stroke="currentColor" stroke-width="2"/></svg>
+                    </div>
+                    <div>
+                        <div class="title-with-badge">
+                            <h2>Chores</h2>
+                            <span class="cf-rank-badge rank-gold" id="chores-rank">Candidate Master</span>
+                        </div>
+                        <span class="task-count" id="chores-count">0 tasks</span>
+                    </div>
+                </div>
+
+                <!-- Codeforces Style Stat Pills -->
+                <div class="cf-stats-strip">
+                    <div class="cf-stat-pill" title="Current consecutive active days in Chores">
+                        <span class="cf-stat-title">Current Streak</span>
+                        <span class="cf-stat-val text-chores" id="chores-current-streak">0 days</span>
+                    </div>
+                    <div class="cf-stat-pill" title="Longest consecutive active streak in Chores">
+                        <span class="cf-stat-title">Max Streak</span>
+                        <span class="cf-stat-val" id="chores-max-streak">0 days</span>
+                    </div>
+                    <div class="cf-stat-pill" title="Total active days with chores done in the last year">
+                        <span class="cf-stat-title">Active Days</span>
+                        <span class="cf-stat-val" id="chores-active-days">0</span>
+                    </div>
+                    <div class="cf-stat-pill" title="All-time chores completed">
+                        <span class="cf-stat-title">Completed</span>
+                        <span class="cf-stat-val" id="chores-total-done">0</span>
+                    </div>
+                    <button class="btn-collapse" data-target="chores" aria-label="Toggle section">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="section-body" id="chores-body">
+                <!-- Codeforces Heatmap -->
+                <div class="heatmap-container">
+                    <div class="heatmap-header">
+                        <div class="heatmap-title-wrap">
+                            <span class="heatmap-badge">Codeforces Activity</span>
+                            <span class="heatmap-subtitle" id="chores-heatmap-summary">0 submissions in the last year</span>
+                        </div>
+                        <div class="heatmap-legend">
+                            <span class="legend-label">Less</span>
+                            <div class="legend-cell" style="background: var(--heatmap-0)"></div>
+                            <div class="legend-cell" style="background: var(--chores-1)"></div>
+                            <div class="legend-cell" style="background: var(--chores-2)"></div>
+                            <div class="legend-cell" style="background: var(--chores-3)"></div>
+                            <div class="legend-cell" style="background: var(--chores-4)"></div>
+                            <span class="legend-label">More</span>
+                        </div>
+                    </div>
+
+                    <div class="heatmap-wrapper">
+                        <div class="heatmap-months" id="chores-months"></div>
+                        <div class="heatmap-grid-wrapper">
+                            <div class="heatmap-days">
+                                <span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span><span>Sun</span>
+                            </div>
+                            <div class="heatmap-grid" id="chores-heatmap"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Inline Quick Add -->
+                <div class="section-inline-add">
+                    <input type="text" class="inline-add-input" id="inline-add-chores" placeholder="+ Quick add Chores task... (Press Enter)" />
+                </div>
+
+                <!-- Task List -->
+                <div class="task-list" id="chores-tasks"></div>
+                <div class="empty-state" id="chores-empty">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
+                    <p>No chores pending. Type above to add your first chore!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: PRODUCTIVITY -->
+        <section class="category-section" id="section-productivity" data-category="productivity">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <div class="section-icon productivity-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div>
+                        <div class="title-with-badge">
+                            <h2>Productivity</h2>
+                            <span class="cf-rank-badge rank-grandmaster" id="productivity-rank">Grandmaster</span>
+                        </div>
+                        <span class="task-count" id="productivity-count">0 tasks</span>
+                    </div>
+                </div>
+
+                <!-- Codeforces Style Stat Pills -->
+                <div class="cf-stats-strip">
+                    <div class="cf-stat-pill" title="Current consecutive active days in Productivity">
+                        <span class="cf-stat-title">Current Streak</span>
+                        <span class="cf-stat-val text-prod" id="productivity-current-streak">0 days</span>
+                    </div>
+                    <div class="cf-stat-pill" title="Longest consecutive active streak in Productivity">
+                        <span class="cf-stat-title">Max Streak</span>
+                        <span class="cf-stat-val" id="productivity-max-streak">0 days</span>
+                    </div>
+                    <div class="cf-stat-pill" title="Total active days with productivity tasks done in the last year">
+                        <span class="cf-stat-title">Active Days</span>
+                        <span class="cf-stat-val" id="productivity-active-days">0</span>
+                    </div>
+                    <div class="cf-stat-pill" title="All-time productivity tasks completed">
+                        <span class="cf-stat-title">Completed</span>
+                        <span class="cf-stat-val" id="productivity-total-done">0</span>
+                    </div>
+                    <button class="btn-collapse" data-target="productivity" aria-label="Toggle section">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="section-body" id="productivity-body">
+                <!-- Codeforces Heatmap -->
+                <div class="heatmap-container">
+                    <div class="heatmap-header">
+                        <div class="heatmap-title-wrap">
+                            <span class="heatmap-badge">Codeforces Activity</span>
+                            <span class="heatmap-subtitle" id="productivity-heatmap-summary">0 submissions in the last year</span>
+                        </div>
+                        <div class="heatmap-legend">
+                            <span class="legend-label">Less</span>
+                            <div class="legend-cell" style="background: var(--heatmap-0)"></div>
+                            <div class="legend-cell" style="background: var(--prod-1)"></div>
+                            <div class="legend-cell" style="background: var(--prod-2)"></div>
+                            <div class="legend-cell" style="background: var(--prod-3)"></div>
+                            <div class="legend-cell" style="background: var(--prod-4)"></div>
+                            <span class="legend-label">More</span>
+                        </div>
+                    </div>
+
+                    <div class="heatmap-wrapper">
+                        <div class="heatmap-months" id="productivity-months"></div>
+                        <div class="heatmap-grid-wrapper">
+                            <div class="heatmap-days">
+                                <span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span><span>Sun</span>
+                            </div>
+                            <div class="heatmap-grid" id="productivity-heatmap"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section Inline Quick Add -->
+                <div class="section-inline-add">
+                    <input type="text" class="inline-add-input" id="inline-add-productivity" placeholder="+ Quick add Productivity task... (Press Enter)" />
+                </div>
+
+                <!-- Task List -->
+                <div class="task-list" id="productivity-tasks"></div>
+                <div class="empty-state" id="productivity-empty">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    <p>No productivity tasks yet. Type above to crush your goals!</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- DETAILED ADD TASK MODAL -->
+    <div class="modal-overlay" id="taskModal">
+        <div class="modal" role="dialog" aria-labelledby="modalTitle">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="modal-icon">📝</div>
+                    <h2 id="modalTitle">Create Detailed Task</h2>
+                </div>
+                <button class="btn-icon modal-close" id="modalClose" aria-label="Close modal">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><line x1="5" y1="5" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="5" x2="5" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+            <form id="taskForm" class="modal-body">
+                <div class="form-group">
+                    <label for="taskTitle">Task Title *</label>
+                    <input type="text" id="taskTitle" placeholder="What do you need to accomplish?" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="taskDescription">Description / Notes</label>
+                    <textarea id="taskDescription" placeholder="Add specific subtasks, links, or execution steps..." rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <div class="category-selector">
+                        <label class="category-option sports-opt">
+                            <input type="radio" name="category" value="sports" id="catSports">
+                            <span class="category-chip">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/></svg>
+                                Sports
+                            </span>
+                        </label>
+                        <label class="category-option chores-opt">
+                            <input type="radio" name="category" value="chores" id="catChores">
+                            <span class="category-chip">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2"/></svg>
+                                Chores
+                            </span>
+                        </label>
+                        <label class="category-option productivity-opt">
+                            <input type="radio" name="category" value="productivity" id="catProductivity" checked>
+                            <span class="category-chip">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                                Productivity
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="taskDeadline">Deadline *</label>
+                        <input type="datetime-local" id="taskDeadline" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskReminder">Gmail Reminder Time</label>
+                        <input type="datetime-local" id="taskReminder">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Priority</label>
+                    <div class="priority-selector">
+                        <label class="priority-option">
+                            <input type="radio" name="priority" value="low" checked>
+                            <span class="priority-chip low">Low</span>
+                        </label>
+                        <label class="priority-option">
+                            <input type="radio" name="priority" value="medium">
+                            <span class="priority-chip medium">Medium</span>
+                        </label>
+                        <label class="priority-option">
+                            <input type="radio" name="priority" value="high">
+                            <span class="priority-chip high">High (Urgent)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="taskEmailNotify" checked>
+                        <span class="checkmark"></span>
+                        Send Gmail alerts (at reminder time & when deadline reaches)
+                    </label>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" id="modalCancel">Cancel</button>
+                    <button type="submit" class="btn-primary">Create Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- GMAIL INBOX / NOTIFICATIONS LOG MODAL -->
+    <div class="modal-overlay" id="gmailInboxModal">
+        <div class="modal modal-lg" role="dialog" aria-labelledby="gmailInboxTitle">
+            <div class="modal-header gmail-inbox-header">
+                <div class="modal-title-wrap">
+                    <div class="gmail-brand-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#EA4335"/><path d="M22 6l-10 7L2 6" stroke="#FFFFFF" stroke-width="2"/></svg>
+                    </div>
+                    <div>
+                        <h2 id="gmailInboxTitle">Gmail Notification Center</h2>
+                        <span class="gmail-inbox-subtitle" id="gmailInboxTarget">Target: <strong id="inboxTargetEmail">you@gmail.com</strong></span>
+                    </div>
+                </div>
+                <div class="gmail-inbox-top-actions">
+                    <button type="button" class="btn-ghost" id="testReminderBtn" title="Simulate a reminder email right now">
+                        ⏰ Test Reminder
+                    </button>
+                    <button type="button" class="btn-ghost" id="testDeadlineBtn" title="Simulate a deadline reached email right now">
+                        🚨 Test Deadline
+                    </button>
+                    <button class="btn-icon modal-close" id="gmailInboxClose" aria-label="Close inbox">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><line x1="5" y1="5" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="5" x2="5" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-body gmail-inbox-body">
+                <div class="gmail-tabs">
+                    <span class="gmail-tab active" id="tabInbox">Inbox (<span id="inboxCount">0</span>)</span>
+                    <button type="button" class="btn-clear-inbox" id="clearInboxBtn">Clear Log</button>
+                </div>
+
+                <div class="gmail-message-list" id="gmailMessageList">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- Email Message Reader View -->
+                <div class="gmail-reader-view hidden" id="gmailReaderView">
+                    <button type="button" class="btn-back-inbox" id="backToInboxBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                        Back to Inbox
+                    </button>
+                    <div class="email-full-card" id="emailFullContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal" role="dialog" aria-labelledby="settingsTitle">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <div class="modal-icon">⚙️</div>
+                    <h2 id="settingsTitle">Gmail & Notification Settings</h2>
+                </div>
+                <button class="btn-icon modal-close" id="settingsClose" aria-label="Close settings">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><line x1="5" y1="5" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="5" x2="5" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-info">
+                    <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#6C5CE7" stroke-width="1.5"/><path d="M10 6v5M10 13v1" stroke="#6C5CE7" stroke-width="2" stroke-linecap="round"/></svg>
+                    <p>Enter your Gmail address below. Notifications trigger at your set reminder time and automatically when the deadline expires. You can send real emails via <a href="https://www.emailjs.com/" target="_blank" rel="noopener">EmailJS</a> or use the built-in instant Gmail Notification Center.</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="userEmail">Your Gmail Address *</label>
+                    <input type="email" id="userEmail" placeholder="yourname@gmail.com">
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="soundChimeToggle" checked>
+                        <span class="checkmark"></span>
+                        Play audio notification chime when reminder/deadline triggers
+                    </label>
+                </div>
+
+                <details class="advanced-email-settings">
+                    <summary>Optional: Connect EmailJS for Real Remote Emails</summary>
+                    <div class="advanced-fields">
+                        <div class="form-group">
+                            <label for="emailjsPublicKey">EmailJS Public Key</label>
+                            <input type="text" id="emailjsPublicKey" placeholder="e.g. u8vXyz123...">
+                        </div>
+                        <div class="form-group">
+                            <label for="emailjsServiceId">EmailJS Service ID</label>
+                            <input type="text" id="emailjsServiceId" placeholder="e.g. service_gmail">
+                        </div>
+                        <div class="form-group">
+                            <label for="emailjsTemplateId">EmailJS Template ID</label>
+                            <input type="text" id="emailjsTemplateId" placeholder="e.g. template_task_alert">
+                        </div>
+                    </div>
+                </details>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" id="settingsCancelBtn">Cancel</button>
+                    <button type="button" class="btn-primary" id="saveSettingsBtn">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
