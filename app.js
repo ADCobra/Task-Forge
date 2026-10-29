@@ -637,7 +637,19 @@ function triggerGmailAlert(task, type = 'reminder') {
                 task_deadline: new Date(task.deadline).toLocaleString(),
                 subject: subject,
                 message: bodyText
-            }).catch(err => console.warn('EmailJS remote send error:', err));
+            }).then(() => {
+                showToast(`📧 Gmail delivered to ${targetEmail}!`, 'success');
+            }).catch(err => {
+                console.error('EmailJS error:', err);
+                const errMsg = err?.text || err?.message || '';
+                if (errMsg.includes('412') || errMsg.includes('Gmail_API')) {
+                    showToast('⚠️ Gmail authorization expired in EmailJS. Click "Connect Account" in EmailJS.', 'error');
+                } else if (errMsg.includes('service ID')) {
+                    showToast('⚠️ Invalid EmailJS Service ID. Check your settings.', 'error');
+                } else {
+                    showToast('⚠️ EmailJS delivery error: ' + (errMsg || 'Check credentials'), 'error');
+                }
+            });
         } catch (e) {
             console.warn('EmailJS SDK not ready', e);
         }
