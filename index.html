@@ -49,6 +49,21 @@
                 </div>
 
 
+                <!-- Auth Profile / Sign In -->
+                <div id="authHeaderContainer">
+                    <button class="btn-ghost" id="openAuthBtn" title="Sign In or Create an Account">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <span>Sign In</span>
+                    </button>
+                    <div class="user-profile-chip hidden" id="userProfileChip">
+                        <div class="user-avatar" id="userAvatar">U</div>
+                        <span class="user-email-text" id="userEmailDisplay">user@mail.com</span>
+                        <button class="btn-signout" id="signOutBtn" title="Sign Out" aria-label="Sign Out">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Gmail Notification Inbox Bell -->
                 <button class="btn-icon" id="gmailInboxBtn" title="Gmail Notifications Log" aria-label="Gmail Notifications">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -620,6 +635,55 @@
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" id="settingsCancelBtn">Cancel</button>
                     <button type="button" class="btn-primary" id="saveSettingsBtn">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    <!-- AUTH MODAL (SIGN IN / CREATE ACCOUNT) -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal auth-modal-box" role="dialog" aria-labelledby="authTitle">
+            <div class="modal-header auth-modal-header">
+                <div class="modal-title-wrap">
+                    <div class="modal-icon">🔐</div>
+                    <h2 id="authTitle">Sign In to TaskForge</h2>
+                </div>
+                <button class="btn-icon modal-close" id="authClose" aria-label="Close modal">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><line x1="5" y1="5" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="5" x2="5" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+            <div class="modal-body auth-modal-body">
+                <!-- Auth Tabs: Sign In / Create Account -->
+                <div class="auth-tabs">
+                    <button type="button" class="auth-tab-btn active" id="tabSignInBtn">Sign In</button>
+                    <button type="button" class="auth-tab-btn" id="tabSignUpBtn">Create Account</button>
+                </div>
+
+                <!-- Form -->
+                <form id="authForm" autocomplete="on">
+                    <div class="form-group">
+                        <label for="authEmail">Email Address *</label>
+                        <input type="email" id="authEmail" placeholder="yourname@gmail.com" required autocomplete="email">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="authPassword">Password *</label>
+                        <input type="password" id="authPassword" placeholder="Enter password (min. 6 characters)" required minlength="6" autocomplete="current-password">
+                    </div>
+
+                    <div class="form-group hidden" id="authConfirmGroup">
+                        <label for="authConfirmPassword">Confirm Password *</label>
+                        <input type="password" id="authConfirmPassword" placeholder="Re-type your password" minlength="6" autocomplete="new-password">
+                    </div>
+
+                    <div class="auth-error-msg hidden" id="authErrorMsg"></div>
+
+                    <button type="submit" class="btn-primary auth-submit-btn" id="authSubmitBtn">
+                        Sign In with Email
+                    </button>
+                </form>
+
+                <div class="auth-footer-text">
+                    <span id="authFooterPrompt">Don't have an account yet?</span>
+                    <a href="#" id="switchAuthMode">Create one now</a>
                 </div>
             </div>
         </div>

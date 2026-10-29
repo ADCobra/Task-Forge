@@ -9,6 +9,7 @@
 ## 🌟 Highlights
 
 - **Instant "Type & Enter" Task Creation**: Add tasks in milliseconds through the prominent Quick-Add Bar or category-specific inline inputs.
+- **Email Authentication & Account Management**: Sign in and create accounts using your email with multi-user isolation, personalized streak tracking, and automatic sync to Gmail notification delivery.
 - **Codeforces-Style Heatmaps**: 52-week rolling activity grids with dynamic rating ranks (*Newbie* → *Pupil* → *Specialist* → *Expert* → *Candidate Master* → *Master* → *Grandmaster*).
 - **Three Dedicated Spheres**:
   - 🏃 **Sports** (Electric Cyan / Specialist Tier)

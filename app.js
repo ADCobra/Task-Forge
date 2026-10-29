@@ -8,6 +8,8 @@
 // ============================================================
 const STORAGE_KEY = 'taskforge_v1';
 const SETTINGS_KEY = 'taskforge_settings_v1';
+const USERS_KEY = 'taskforge_users_v1';
+const SESSION_KEY = 'taskforge_session_user_v1';
 
 const CATEGORIES = ['sports', 'chores', 'productivity'];
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -22,7 +24,40 @@ const DEFAULT_DATA = {
     gmailInbox: []
 };
 
+function getUsers() {
+    try {
+        const raw = localStorage.getItem(USERS_KEY);
+        if (raw) return JSON.parse(raw);
+    } catch (e) {
+        console.error('Failed to load users', e);
+    }
+    return {};
+}
+
+function saveUsers(users) {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
+
+function getSessionUser() {
+    return localStorage.getItem(SESSION_KEY) || null;
+}
+
+function setSessionUser(email) {
+    if (email) {
+        localStorage.setItem(SESSION_KEY, email);
+    } else {
+        localStorage.removeItem(SESSION_KEY);
+    }
+}
+
 function loadData() {
+    const sessionEmail = getSessionUser();
+    if (sessionEmail) {
+        const users = getUsers();
+        if (users[sessionEmail] && users[sessionEmail].data) {
+            return users[sessionEmail].data;
+        }
+    }
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
@@ -38,6 +73,14 @@ function loadData() {
 }
 
 function saveData(data) {
+    const sessionEmail = getSessionUser();
+    if (sessionEmail) {
+        const users = getUsers();
+        if (users[sessionEmail]) {
+            users[sessionEmail].data = data;
+            saveUsers(users);
+        }
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
@@ -1042,6 +1085,173 @@ function setupEventListeners() {
             document.querySelectorAll('.modal-overlay.active').forEach(m => closeModal(m.id));
         }
     });
+    // ============================================================
+    //  AUTHENTICATION EVENT LISTENERS
+    // ============================================================
+    document.getElementById('openAuthBtn').addEventListener('click', () => {
+        setAuthMode('signin');
+        openModal('authModal');
+    });
+
+    document.getElementById('authClose').addEventListener('click', () => closeModal('authModal'));
+
+    document.getElementById('tabSignInBtn').addEventListener('click', () => setAuthMode('signin'));
+    document.getElementById('tabSignUpBtn').addEventListener('click', () => setAuthMode('signup'));
+
+    document.getElementById('switchAuthMode').addEventListener('click', (e) => {
+        e.preventDefault();
+        setAuthMode(currentAuthMode === 'signin' ? 'signup' : 'signin');
+    });
+
+    document.getElementById('authForm').addEventListener('submit', handleAuthSubmit);
+
+    document.getElementById('signOutBtn').addEventListener('click', handleSignOut);
+}
+
+// ============================================================
+//  AUTHENTICATION CONTROLLERS
+// ============================================================
+let currentAuthMode = 'signin';
+
+function setAuthMode(mode) {
+    currentAuthMode = mode;
+    const isSignIn = mode === 'signin';
+
+    document.getElementById('tabSignInBtn').classList.toggle('active', isSignIn);
+    document.getElementById('tabSignUpBtn').classList.toggle('active', !isSignIn);
+
+    document.getElementById('authTitle').textContent = isSignIn ? 'Sign In to TaskForge' : 'Create TaskForge Account';
+    document.getElementById('authSubmitBtn').textContent = isSignIn ? 'Sign In with Email' : 'Create Account & Start Tracking';
+    document.getElementById('authConfirmGroup').classList.toggle('hidden', isSignIn);
+
+    document.getElementById('authFooterPrompt').textContent = isSignIn ? "Don't have an account yet?" : "Already have an account?";
+    document.getElementById('switchAuthMode').textContent = isSignIn ? 'Create one now' : 'Sign in here';
+
+    const err = document.getElementById('authErrorMsg');
+    err.classList.add('hidden');
+    err.textContent = '';
+}
+
+function showAuthError(msg) {
+    const err = document.getElementById('authErrorMsg');
+    err.textContent = msg;
+    err.classList.remove('hidden');
+}
+
+function handleAuthSubmit(e) {
+    e.preventDefault();
+    const email = document.getElementById('authEmail').value.trim().toLowerCase();
+    const password = document.getElementById('authPassword').value;
+    const confirmPassword = document.getElementById('authConfirmPassword').value;
+
+    if (!email || !email.includes('@')) {
+        showAuthError('Please enter a valid email address.');
+        return;
+    }
+
+    if (password.length < 6) {
+        showAuthError('Password must be at least 6 characters long.');
+        return;
+    }
+
+    const users = getUsers();
+
+    if (currentAuthMode === 'signup') {
+        if (password !== confirmPassword) {
+            showAuthError('Passwords do not match. Please re-enter.');
+            return;
+        }
+
+        if (users[email]) {
+            showAuthError('An account with this email already exists. Please Sign In.');
+            return;
+        }
+
+        // Create new account
+        users[email] = {
+            email: email,
+            password: password,
+            createdAt: new Date().toISOString(),
+            data: structuredClone(DEFAULT_DATA)
+        };
+        saveUsers(users);
+        setSessionUser(email);
+
+        // Switch active app data to user's
+        appData = users[email].data;
+        appSettings.userEmail = email;
+        saveSettings(appSettings);
+
+        closeModal('authModal');
+        document.getElementById('authForm').reset();
+        updateAuthUI();
+        renderHeatmaps();
+        renderTasks();
+        updateGmailInboxUI();
+        showToast(`🎉 Account created! Welcome, ${email}!`, 'success');
+
+    } else {
+        // Sign In
+        if (!users[email]) {
+            showAuthError('No account found with this email. Click "Create Account" above to register.');
+            return;
+        }
+
+        if (users[email].password !== password) {
+            showAuthError('Incorrect password. Please try again.');
+            return;
+        }
+
+        // Successful Sign In
+        setSessionUser(email);
+        appData = users[email].data || structuredClone(DEFAULT_DATA);
+        appSettings.userEmail = email;
+        saveSettings(appSettings);
+
+        closeModal('authModal');
+        document.getElementById('authForm').reset();
+        updateAuthUI();
+        renderHeatmaps();
+        renderTasks();
+        updateGmailInboxUI();
+        showToast(`⚡ Welcome back, ${email}!`, 'success');
+    }
+}
+
+function handleSignOut() {
+    const currentEmail = getSessionUser();
+    if (currentEmail) {
+        saveData(appData);
+    }
+
+    setSessionUser(null);
+    appData = structuredClone(DEFAULT_DATA);
+    appSettings.userEmail = 'user@gmail.com';
+    saveSettings(appSettings);
+
+    updateAuthUI();
+    renderHeatmaps();
+    renderTasks();
+    updateGmailInboxUI();
+    showToast('Signed out successfully.', 'info');
+}
+
+function updateAuthUI() {
+    const sessionEmail = getSessionUser();
+    const openBtn = document.getElementById('openAuthBtn');
+    const chip = document.getElementById('userProfileChip');
+    const avatar = document.getElementById('userAvatar');
+    const displayEmail = document.getElementById('userEmailDisplay');
+
+    if (sessionEmail) {
+        if (openBtn) openBtn.classList.add('hidden');
+        if (chip) chip.classList.remove('hidden');
+        if (avatar) avatar.textContent = sessionEmail.charAt(0).toUpperCase();
+        if (displayEmail) displayEmail.textContent = sessionEmail;
+    } else {
+        if (openBtn) openBtn.classList.remove('hidden');
+        if (chip) chip.classList.add('hidden');
+    }
 }
 
 // ============================================================
@@ -1053,11 +1263,11 @@ function init() {
     }
 
     setupEventListeners();
+    updateAuthUI();
     renderHeatmaps();
     renderTasks();
     updateGmailInboxUI();
     startNotificationHeartbeat();
-
 }
 
 document.addEventListener('DOMContentLoaded', init);
