@@ -8,8 +8,17 @@
 // ============================================================
 const STORAGE_KEY = 'taskforge_v1';
 const SETTINGS_KEY = 'taskforge_settings_v1';
-const USERS_KEY = 'taskforge_users_v1';
-const SESSION_KEY = 'taskforge_session_user_v1';
+const ROOMS_KEY = 'taskforge_rooms_v1';
+const SESSION_KEY = 'taskforge_session_room_v1';
+
+// Site-wide EmailJS credentials so every room can send real emails without
+// configuring Settings. These are public, client-side keys (safe to commit).
+// Values entered in Settings override these.
+const EMAILJS_DEFAULTS = {
+    publicKey: '',
+    serviceId: '',
+    templateId: ''
+};
 
 const CATEGORIES = ['sports', 'chores', 'productivity'];
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -24,64 +33,66 @@ const DEFAULT_DATA = {
     gmailInbox: []
 };
 
-function getUsers() {
+function getRooms() {
     try {
-        const raw = localStorage.getItem(USERS_KEY);
+        const raw = localStorage.getItem(ROOMS_KEY);
         if (raw) return JSON.parse(raw);
     } catch (e) {
-        console.error('Failed to load users', e);
+        console.error('Failed to load rooms', e);
     }
     return {};
 }
 
-function saveUsers(users) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+function saveRooms(rooms) {
+    localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
 }
 
-function getSessionUser() {
+// Session holds the passcode hash of the room currently open
+function getSessionRoom() {
     return localStorage.getItem(SESSION_KEY) || null;
 }
 
-function setSessionUser(email) {
-    if (email) {
-        localStorage.setItem(SESSION_KEY, email);
+function setSessionRoom(roomId) {
+    if (roomId) {
+        localStorage.setItem(SESSION_KEY, roomId);
     } else {
         localStorage.removeItem(SESSION_KEY);
     }
 }
 
-function loadData() {
-    const sessionEmail = getSessionUser();
-    if (sessionEmail) {
-        const users = getUsers();
-        if (users[sessionEmail] && users[sessionEmail].data) {
-            return users[sessionEmail].data;
-        }
-    }
+function normalizeData(data) {
+    const d = data || structuredClone(DEFAULT_DATA);
+    if (!d.tasks) d.tasks = [];
+    if (!d.completions) d.completions = { sports: {}, chores: {}, productivity: {} };
+    if (!d.gmailInbox) d.gmailInbox = [];
+    return d;
+}
+
+// Data saved before rooms existed (anonymous use), adopted by the first room
+function loadLegacyData() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-            const parsed = JSON.parse(raw);
-            if (!parsed.completions) parsed.completions = { sports: {}, chores: {}, productivity: {} };
-            if (!parsed.gmailInbox) parsed.gmailInbox = [];
-            return parsed;
-        }
+        if (raw) return normalizeData(JSON.parse(raw));
     } catch (e) {
         console.error('Failed to load local data', e);
     }
-    return structuredClone(DEFAULT_DATA);
+    return null;
+}
+
+function loadData() {
+    const roomId = getSessionRoom();
+    const room = roomId && getRooms()[roomId];
+    return normalizeData(room ? room.data : null);
 }
 
 function saveData(data) {
-    const sessionEmail = getSessionUser();
-    if (sessionEmail) {
-        const users = getUsers();
-        if (users[sessionEmail]) {
-            users[sessionEmail].data = data;
-            saveUsers(users);
-        }
+    const roomId = getSessionRoom();
+    if (!roomId) return;
+    const rooms = getRooms();
+    if (rooms[roomId]) {
+        rooms[roomId].data = data;
+        saveRooms(rooms);
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
 const DEFAULT_SETTINGS = {
@@ -593,8 +604,17 @@ function deleteTask(id) {
 // ============================================================
 //  GMAIL NOTIFICATION ENGINE
 // ============================================================
+function getEmailJSConfig() {
+    return {
+        publicKey: appSettings.publicKey || EMAILJS_DEFAULTS.publicKey,
+        serviceId: appSettings.serviceId || EMAILJS_DEFAULTS.serviceId,
+        templateId: appSettings.templateId || EMAILJS_DEFAULTS.templateId
+    };
+}
+
 function isEmailJSConfigured() {
-    return !!(appSettings.publicKey && appSettings.serviceId && appSettings.templateId);
+    const cfg = getEmailJSConfig();
+    return !!(cfg.publicKey && cfg.serviceId && cfg.templateId);
 }
 
 function composeTaskEmail(task, type) {
@@ -695,9 +715,10 @@ function deliverViaEmailJS(emailEntry) {
         return Promise.resolve(finish('failed', 'EmailJS SDK not loaded'));
     }
 
+    const cfg = getEmailJSConfig();
     return Promise.resolve().then(() => {
-        emailjs.init(appSettings.publicKey);
-        return emailjs.send(appSettings.serviceId, appSettings.templateId, {
+        emailjs.init(cfg.publicKey);
+        return emailjs.send(cfg.serviceId, cfg.templateId, {
             to_email: emailEntry.recipient,
             task_title: emailEntry.taskTitle,
             task_category: (emailEntry.category || '').toUpperCase(),
@@ -1266,6 +1287,13 @@ function setupEventListeners() {
 
     const readSettingsForm = () => {
         appSettings.userEmail = document.getElementById('userEmail').value.trim() || 'user@gmail.com';
+        const rooms = getRooms();
+        const roomId = getSessionRoom();
+        if (rooms[roomId] && rooms[roomId].email !== appSettings.userEmail) {
+            rooms[roomId].email = appSettings.userEmail;
+            saveRooms(rooms);
+            updateRoomUI();
+        }
         appSettings.soundChime = document.getElementById('soundChimeToggle').checked;
         appSettings.publicKey = document.getElementById('emailjsPublicKey').value.trim();
         appSettings.serviceId = document.getElementById('emailjsServiceId').value.trim();
@@ -1346,7 +1374,8 @@ function setupEventListeners() {
     });
 
     // 8. ESCAPE & OVERLAY CLICKS
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    // The room gate can't be dismissed until a room is open
+    document.querySelectorAll('.modal-overlay:not(#roomModal)').forEach(overlay => {
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) closeModal(overlay.id);
         });
@@ -1354,176 +1383,135 @@ function setupEventListeners() {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            document.querySelectorAll('.modal-overlay.active').forEach(m => closeModal(m.id));
+            document.querySelectorAll('.modal-overlay.active:not(#roomModal)').forEach(m => closeModal(m.id));
         }
     });
+
     // ============================================================
-    //  AUTHENTICATION EVENT LISTENERS
+    //  ROOM EVENT LISTENERS
     // ============================================================
-    document.getElementById('openAuthBtn').addEventListener('click', () => {
-        setAuthMode('signin');
-        openModal('authModal');
-    });
-
-    document.getElementById('authClose').addEventListener('click', () => closeModal('authModal'));
-
-    document.getElementById('tabSignInBtn').addEventListener('click', () => setAuthMode('signin'));
-    document.getElementById('tabSignUpBtn').addEventListener('click', () => setAuthMode('signup'));
-
-    document.getElementById('switchAuthMode').addEventListener('click', (e) => {
-        e.preventDefault();
-        setAuthMode(currentAuthMode === 'signin' ? 'signup' : 'signin');
-    });
-
-    document.getElementById('authForm').addEventListener('submit', handleAuthSubmit);
-
-    document.getElementById('signOutBtn').addEventListener('click', handleSignOut);
+    document.getElementById('roomForm').addEventListener('submit', handleRoomSubmit);
+    document.getElementById('roomPasscode').addEventListener('input', () => setRoomCreateMode(false));
+    document.getElementById('leaveRoomBtn').addEventListener('click', handleLeaveRoom);
 }
 
 // ============================================================
-//  AUTHENTICATION CONTROLLERS
+//  ROOM CONTROLLERS (PASSCODE ACCESS)
 // ============================================================
-let currentAuthMode = 'signin';
+const MIN_PASSCODE_LENGTH = 4;
+let roomCreateMode = false;
 
-function setAuthMode(mode) {
-    currentAuthMode = mode;
-    const isSignIn = mode === 'signin';
-
-    document.getElementById('tabSignInBtn').classList.toggle('active', isSignIn);
-    document.getElementById('tabSignUpBtn').classList.toggle('active', !isSignIn);
-
-    document.getElementById('authTitle').textContent = isSignIn ? 'Sign In to TaskForge' : 'Create TaskForge Account';
-    document.getElementById('authSubmitBtn').textContent = isSignIn ? 'Sign In with Email' : 'Create Account & Start Tracking';
-    document.getElementById('authConfirmGroup').classList.toggle('hidden', isSignIn);
-
-    document.getElementById('authFooterPrompt').textContent = isSignIn ? "Don't have an account yet?" : "Already have an account?";
-    document.getElementById('switchAuthMode').textContent = isSignIn ? 'Create one now' : 'Sign in here';
-
-    const err = document.getElementById('authErrorMsg');
-    err.classList.add('hidden');
-    err.textContent = '';
+async function hashPasscode(passcode) {
+    const bytes = new TextEncoder().encode('taskforge-room:' + passcode);
+    if (window.crypto && crypto.subtle) {
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        return 'room_' + Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    // Fallback for insecure contexts without SubtleCrypto (FNV-1a)
+    let h = 0x811c9dc5;
+    bytes.forEach(b => { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; });
+    return 'room_fnv_' + h.toString(16);
 }
 
-function showAuthError(msg) {
-    const err = document.getElementById('authErrorMsg');
+function setRoomCreateMode(on) {
+    roomCreateMode = on;
+    document.getElementById('roomEmailGroup').classList.toggle('hidden', !on);
+    document.getElementById('roomEmail').required = on;
+    document.getElementById('roomSubmitBtn').textContent = on ? 'Create Room & Enable Alerts' : 'Enter Room';
+    document.getElementById('roomHint').textContent = on
+        ? 'No room uses this passcode yet. Add the email where alerts should be sent to create it.'
+        : 'Enter your room passcode. New passcode? You\'ll be asked for an alert email to create the room.';
+    showRoomError('');
+}
+
+function showRoomError(msg) {
+    const err = document.getElementById('roomErrorMsg');
     err.textContent = msg;
-    err.classList.remove('hidden');
+    err.classList.toggle('hidden', !msg);
 }
 
-function handleAuthSubmit(e) {
+async function handleRoomSubmit(e) {
     e.preventDefault();
-    const email = document.getElementById('authEmail').value.trim().toLowerCase();
-    const password = document.getElementById('authPassword').value;
-    const confirmPassword = document.getElementById('authConfirmPassword').value;
-
-    if (!email || !email.includes('@')) {
-        showAuthError('Please enter a valid email address.');
+    const passcode = document.getElementById('roomPasscode').value.trim();
+    if (passcode.length < MIN_PASSCODE_LENGTH) {
+        showRoomError(`Passcode must be at least ${MIN_PASSCODE_LENGTH} characters.`);
         return;
     }
 
-    if (password.length < 6) {
-        showAuthError('Password must be at least 6 characters long.');
-        return;
-    }
+    const roomId = await hashPasscode(passcode);
+    const rooms = getRooms();
 
-    const users = getUsers();
-
-    if (currentAuthMode === 'signup') {
-        if (password !== confirmPassword) {
-            showAuthError('Passwords do not match. Please re-enter.');
+    if (!rooms[roomId]) {
+        if (!roomCreateMode) {
+            setRoomCreateMode(true);
+            document.getElementById('roomEmail').focus();
             return;
         }
 
-        if (users[email]) {
-            showAuthError('An account with this email already exists. Please Sign In.');
+        const email = document.getElementById('roomEmail').value.trim().toLowerCase();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            showRoomError('Please enter a valid email address for alerts.');
             return;
         }
 
-        // Create new account
-        users[email] = {
+        // The first room on this browser adopts any tasks from before rooms existed
+        const legacy = Object.keys(rooms).length === 0 ? loadLegacyData() : null;
+        rooms[roomId] = {
             email: email,
-            password: password,
             createdAt: new Date().toISOString(),
-            data: structuredClone(DEFAULT_DATA)
+            data: legacy && legacy.tasks.length ? legacy : structuredClone(DEFAULT_DATA)
         };
-        saveUsers(users);
-        setSessionUser(email);
-
-        // Switch active app data to user's
-        appData = users[email].data;
-        appSettings.userEmail = email;
-        saveSettings(appSettings);
-
-        closeModal('authModal');
-        document.getElementById('authForm').reset();
-        updateAuthUI();
-        renderHeatmaps();
-        renderTasks();
-        updateGmailInboxUI();
-        showToast(`🎉 Account created! Welcome, ${email}!`, 'success');
-
+        saveRooms(rooms);
+        enterRoom(roomId, rooms[roomId]);
+        showToast(`🎉 Room created! Alerts will be emailed to ${email}`, 'success');
     } else {
-        // Sign In
-        if (!users[email]) {
-            showAuthError('No account found with this email. Click "Create Account" above to register.');
-            return;
-        }
-
-        if (users[email].password !== password) {
-            showAuthError('Incorrect password. Please try again.');
-            return;
-        }
-
-        // Successful Sign In
-        setSessionUser(email);
-        appData = users[email].data || structuredClone(DEFAULT_DATA);
-        appSettings.userEmail = email;
-        saveSettings(appSettings);
-
-        closeModal('authModal');
-        document.getElementById('authForm').reset();
-        updateAuthUI();
-        renderHeatmaps();
-        renderTasks();
-        updateGmailInboxUI();
-        showToast(`⚡ Welcome back, ${email}!`, 'success');
+        enterRoom(roomId, rooms[roomId]);
+        showToast('⚡ Welcome back to your room!', 'success');
     }
 }
 
-function handleSignOut() {
-    const currentEmail = getSessionUser();
-    if (currentEmail) {
-        saveData(appData);
-    }
-
-    setSessionUser(null);
-    appData = structuredClone(DEFAULT_DATA);
-    appSettings.userEmail = 'user@gmail.com';
+function enterRoom(roomId, room) {
+    setSessionRoom(roomId);
+    appData = normalizeData(room.data);
+    appSettings.userEmail = room.email;
     saveSettings(appSettings);
 
-    updateAuthUI();
+    closeModal('roomModal');
+    document.getElementById('roomForm').reset();
+    setRoomCreateMode(false);
+    updateRoomUI();
     renderHeatmaps();
     renderTasks();
     updateGmailInboxUI();
-    showToast('Signed out successfully.', 'info');
 }
 
-function updateAuthUI() {
-    const sessionEmail = getSessionUser();
-    const openBtn = document.getElementById('openAuthBtn');
-    const chip = document.getElementById('userProfileChip');
-    const avatar = document.getElementById('userAvatar');
-    const displayEmail = document.getElementById('userEmailDisplay');
+function handleLeaveRoom() {
+    saveData(appData);
+    setSessionRoom(null);
+    appData = structuredClone(DEFAULT_DATA);
 
-    if (sessionEmail) {
-        if (openBtn) openBtn.classList.add('hidden');
-        if (chip) chip.classList.remove('hidden');
-        if (avatar) avatar.textContent = sessionEmail.charAt(0).toUpperCase();
-        if (displayEmail) displayEmail.textContent = sessionEmail;
-    } else {
-        if (openBtn) openBtn.classList.remove('hidden');
-        if (chip) chip.classList.add('hidden');
-    }
+    updateRoomUI();
+    renderHeatmaps();
+    renderTasks();
+    updateGmailInboxUI();
+    showRoomGate();
+    showToast('Left room. Enter a passcode to continue.', 'info');
+}
+
+function showRoomGate() {
+    setRoomCreateMode(false);
+    openModal('roomModal');
+    setTimeout(() => document.getElementById('roomPasscode').focus(), 120);
+}
+
+function updateRoomUI() {
+    const roomId = getSessionRoom();
+    const room = roomId && getRooms()[roomId];
+    const chip = document.getElementById('roomChip');
+    const emailEl = document.getElementById('roomEmailDisplay');
+
+    if (chip) chip.classList.toggle('hidden', !room);
+    if (room && emailEl) emailEl.textContent = room.email;
 }
 
 // ============================================================
@@ -1535,11 +1523,17 @@ function init() {
     }
 
     setupEventListeners();
-    updateAuthUI();
+    updateRoomUI();
     renderHeatmaps();
     renderTasks();
     updateGmailInboxUI();
     startNotificationHeartbeat();
+
+    const roomId = getSessionRoom();
+    if (!roomId || !getRooms()[roomId]) {
+        setSessionRoom(null);
+        showRoomGate();
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);

@@ -11,7 +11,7 @@
 ## 🌟 Highlights
 
 - **Instant "Type & Enter" Task Creation**: Add tasks in milliseconds through the prominent Quick-Add Bar or category-specific inline inputs.
-- **Email Authentication & Account Management**: Sign in and create accounts using your email with multi-user isolation, personalized streak tracking, and automatic sync to Gmail notification delivery.
+- **Passcode Rooms (no sign-up)**: Open the site, type a passcode, and you're in. A new passcode asks for the email where alerts should go and creates your room; the same passcode brings you back. Each room has its own tasks, streaks, and alert email. Passcodes are stored only as SHA-256 hashes.
 - **Codeforces-Style Heatmaps**: 52-week rolling activity grids with dynamic rating ranks (*Newbie* → *Pupil* → *Specialist* → *Expert* → *Candidate Master* → *Master* → *Grandmaster*).
 - **Three Dedicated Spheres**:
   - 🏃 **Sports** (Electric Cyan / Specialist Tier)
@@ -65,7 +65,7 @@ TaskForge runs with its built-in interactive **Gmail Notification Center** right
 1. Create a free account at [EmailJS](https://www.emailjs.com/).
 2. Add a Gmail service and create an email template.
 3. In TaskForge, click the **Settings (⚙️)** icon in the header.
-4. Enter your EmailJS **Public Key**, **Service ID**, **Template ID**, and **Gmail Address**.
+4. Enter your EmailJS **Public Key**, **Service ID**, and **Template ID** (or set them once for every room in `EMAILJS_DEFAULTS` at the top of `app.js` — these keys are public by design).
 5. In your EmailJS template, set **To Email** to `{{to_email}}`, the subject to `{{subject}}`, and the body to `{{message}}` (`{{task_title}}`, `{{task_category}}` and `{{task_deadline}}` are also available).
 6. Click **Send Test Email** in the *Email Alerts* section to confirm delivery, then pick which alerts you want (reminders, deadlines, overdue follow-ups, daily digest).
 7. Save settings — alerts will now dispatch directly to your inbox!
