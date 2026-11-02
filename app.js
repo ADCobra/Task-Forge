@@ -1,6 +1,6 @@
 /**
- * TaskForge — Codeforces-Style Task Tracker & Gmail Notification Engine
- * High-performance task management with Codeforces heatmaps & Gmail alerts.
+ * TaskForge — Codeforces-Style Task Tracker & Dashboard Alerts
+ * High-performance task management with Codeforces heatmaps & live alerts.
  */
 
 // ============================================================
@@ -11,14 +11,6 @@ const SETTINGS_KEY = 'taskforge_settings_v1';
 const ROOMS_KEY = 'taskforge_rooms_v1';
 const SESSION_KEY = 'taskforge_session_room_v1';
 
-// Site-wide EmailJS credentials so every room can send real emails without
-// configuring Settings. These are public, client-side keys (safe to commit).
-// Values entered in Settings override these.
-const EMAILJS_DEFAULTS = {
-    publicKey: '',
-    serviceId: '',
-    templateId: ''
-};
 
 const CATEGORIES = ['sports', 'chores', 'productivity'];
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -30,8 +22,10 @@ const DEFAULT_DATA = {
         chores: {},
         productivity: {}
     },
-    gmailInbox: []
+    alerts: []
 };
+
+const MAX_STORED_ALERTS = 100;
 
 function getRooms() {
     try {
@@ -64,7 +58,13 @@ function normalizeData(data) {
     const d = data || structuredClone(DEFAULT_DATA);
     if (!d.tasks) d.tasks = [];
     if (!d.completions) d.completions = { sports: {}, chores: {}, productivity: {} };
-    if (!d.gmailInbox) d.gmailInbox = [];
+    if (!d.alerts) d.alerts = [];
+    // Older data: per-task flag was called emailNotify, and the inbox log is retired
+    d.tasks.forEach(t => {
+        if (t.alertsOn === undefined) t.alertsOn = t.emailNotify !== false;
+        delete t.emailNotify;
+    });
+    delete d.gmailInbox;
     return d;
 }
 
@@ -96,17 +96,10 @@ function saveData(data) {
 }
 
 const DEFAULT_SETTINGS = {
-    userEmail: 'user@gmail.com',
     soundChime: true,
-    publicKey: '',
-    serviceId: '',
-    templateId: '',
-    // Email alert preferences
     reminderAlerts: true,
     deadlineAlerts: true,
-    overdueFollowUpHours: 0,   // 0 = off
-    digestEnabled: false,
-    digestTime: '08:00'
+    overdueFollowUpHours: 0    // 0 = off
 };
 
 const MAX_OVERDUE_FOLLOW_UPS = 3;
@@ -475,11 +468,8 @@ function renderTasks() {
                                 ${timeLeft}
                             </span>
                             <span class="task-priority-dot ${task.priority}" title="${task.priority} priority"></span>
-                            ${task.emailNotify ? `
-                                <span class="task-gmail-pill" title="Gmail alerts active">
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#EA4335"/><path d="M22 6l-10 7L2 6" stroke="#FFFFFF" stroke-width="2"/></svg>
-                                    Gmail
-                                </span>
+                            ${task.alertsOn ? `
+                                <span class="task-alert-pill" title="Dashboard alerts active">🔔 Alerts</span>
                             ` : ''}
                         </div>
                     </div>
@@ -551,7 +541,7 @@ function addTask(taskData) {
         deadline: taskData.deadline,
         reminder: taskData.reminder || null,
         priority: taskData.priority || 'medium',
-        emailNotify: taskData.emailNotify !== false,
+        alertsOn: taskData.alertsOn !== false,
         completed: false,
         createdAt: new Date().toISOString(),
         reminderSent: false,
@@ -589,6 +579,7 @@ function toggleTask(id) {
     saveData(appData);
     renderTasks();
     renderHeatmaps();
+    renderAlerts();
 }
 
 function deleteTask(id) {
@@ -598,235 +589,68 @@ function deleteTask(id) {
     appData.tasks = appData.tasks.filter(t => t.id !== id);
     saveData(appData);
     renderTasks();
+    renderAlerts();
     showToast(`Task removed`, 'info');
 }
 
 // ============================================================
-//  GMAIL NOTIFICATION ENGINE
+//  DASHBOARD ALERTS ENGINE
 // ============================================================
-function getEmailJSConfig() {
-    return {
-        publicKey: appSettings.publicKey || EMAILJS_DEFAULTS.publicKey,
-        serviceId: appSettings.serviceId || EMAILJS_DEFAULTS.serviceId,
-        templateId: appSettings.templateId || EMAILJS_DEFAULTS.templateId
-    };
+const ALERT_META = {
+    reminder: { icon: '⏰', label: 'Due soon' },
+    deadline: { icon: '🚨', label: 'Deadline reached' },
+    overdue: { icon: '🔁', label: 'Still overdue' },
+    test: { icon: '🔔', label: 'Test alert' }
+};
+
+function composeAlertMessage(task, type) {
+    const deadlineStr = new Date(task.deadline).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+    if (type === 'reminder') return `Due ${deadlineStr} — ${formatTimeLeft(new Date(task.deadline), new Date())}.`;
+    if (type === 'overdue') return `Was due ${deadlineStr} and still isn't done.`;
+    if (type === 'test') return 'Alerts are working. They will show up here.';
+    return `Was due ${deadlineStr}. Complete it or update the deadline.`;
 }
 
-function isEmailJSConfigured() {
-    const cfg = getEmailJSConfig();
-    return !!(cfg.publicKey && cfg.serviceId && cfg.templateId);
-}
-
-function composeTaskEmail(task, type) {
-    const deadlineStr = new Date(task.deadline).toLocaleString();
-    const cat = task.category.toUpperCase();
-
-    if (type === 'reminder') {
-        return {
-            subject: `⏰ [TaskForge Reminder] "${task.title}" is due soon!`,
-            bodyText: `Your task "${task.title}" in category ${cat} is scheduled for completion at ${deadlineStr}. Make sure to finish it on time!`
-        };
-    }
-    if (type === 'overdue') {
-        return {
-            subject: `🔁 [TaskForge Follow-up] "${task.title}" is still overdue`,
-            bodyText: `"${task.title}" (${cat}) was due ${deadlineStr} and is still not completed. Finish it, or update its deadline to stop these follow-ups.`
-        };
-    }
-    return {
-        subject: `🚨 [TaskForge Deadline] "${task.title}" has reached its deadline!`,
-        bodyText: `Deadline has expired for "${task.title}" (${cat}). Was scheduled for ${deadlineStr}. Please update or complete it.`
-    };
-}
-
-function triggerGmailAlert(task, type = 'reminder') {
-    const { subject, bodyText } = composeTaskEmail(task, type);
-
-    dispatchEmail({
+function triggerAlert(task, type = 'reminder') {
+    const alert = {
+        id: 'alert_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
         taskId: task.id,
         taskTitle: task.title,
         category: task.category,
         priority: task.priority,
         deadline: task.deadline,
         type: type,
-        subject: subject,
-        bodyText: bodyText
-    });
-}
-
-// Logs an email to the in-app inbox, fires local notifications, and
-// delivers it remotely through EmailJS when configured.
-function dispatchEmail(fields, { silent = false } = {}) {
-    const emailEntry = {
-        id: 'email_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-        ...fields,
-        recipient: appSettings.userEmail || 'user@gmail.com',
+        message: composeAlertMessage(task, type),
         timestamp: new Date().toISOString(),
-        read: false,
-        delivery: isEmailJSConfigured() ? 'pending' : 'local'
+        read: false
     };
 
-    appData.gmailInbox.unshift(emailEntry);
+    appData.alerts.unshift(alert);
+    appData.alerts.length = Math.min(appData.alerts.length, MAX_STORED_ALERTS);
     saveData(appData);
-    updateGmailInboxUI();
+    renderAlerts();
 
-    if (!silent) {
-        playNotificationChime(emailEntry.type === 'reminder' || emailEntry.type === 'digest' ? 'reminder' : 'urgent');
-        showGmailLiveBanner(emailEntry);
+    playNotificationChime(type === 'reminder' || type === 'test' ? 'reminder' : 'urgent');
+    showAlertBanner(alert);
 
-        // Native HTML5 Browser Notification
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(emailEntry.subject, {
-                body: emailEntry.bodyText,
-                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📬</text></svg>'
-            });
-        }
-    }
-
-    if (emailEntry.delivery === 'pending') {
-        return deliverViaEmailJS(emailEntry);
-    }
-    return Promise.resolve(emailEntry);
-}
-
-function describeEmailJSError(err) {
-    const errMsg = err?.text || err?.message || '';
-    if (errMsg.includes('412') || errMsg.includes('Gmail_API')) {
-        return 'Gmail authorization expired in EmailJS. Click "Connect Account" in EmailJS.';
-    }
-    if (errMsg.includes('service ID')) {
-        return 'Invalid EmailJS Service ID. Check your settings.';
-    }
-    return 'EmailJS delivery error: ' + (errMsg || 'Check credentials');
-}
-
-function deliverViaEmailJS(emailEntry) {
-    const finish = (status, error) => {
-        emailEntry.delivery = status;
-        emailEntry.deliveryError = error || null;
-        saveData(appData);
-        updateGmailInboxUI();
-        return emailEntry;
-    };
-
-    if (typeof emailjs === 'undefined') {
-        console.warn('EmailJS SDK not ready');
-        showToast('⚠️ EmailJS SDK failed to load. Email kept in local inbox.', 'error');
-        return Promise.resolve(finish('failed', 'EmailJS SDK not loaded'));
-    }
-
-    const cfg = getEmailJSConfig();
-    return Promise.resolve().then(() => {
-        emailjs.init(cfg.publicKey);
-        return emailjs.send(cfg.serviceId, cfg.templateId, {
-            to_email: emailEntry.recipient,
-            task_title: emailEntry.taskTitle,
-            task_category: (emailEntry.category || '').toUpperCase(),
-            task_deadline: emailEntry.deadline ? new Date(emailEntry.deadline).toLocaleString() : '',
-            subject: emailEntry.subject,
-            message: emailEntry.bodyText
+    // Native HTML5 Browser Notification (useful when the tab is in the background)
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(`${ALERT_META[type].icon} ${ALERT_META[type].label}: ${task.title}`, {
+            body: alert.message,
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔔</text></svg>'
         });
-    }).then(() => {
-        showToast(`📧 Gmail delivered to ${emailEntry.recipient}!`, 'success');
-        return finish('sent');
-    }).catch(err => {
-        console.error('EmailJS error:', err);
-        const msg = describeEmailJSError(err);
-        showToast('⚠️ ' + msg, 'error');
-        return finish('failed', msg);
-    });
-}
-
-function retryEmailDelivery(emailId) {
-    const email = appData.gmailInbox.find(m => m.id === emailId);
-    if (!email) return;
-    if (!isEmailJSConfigured()) {
-        showToast('Connect EmailJS in Settings to deliver real emails.', 'warning');
-        return;
     }
-    email.recipient = appSettings.userEmail || email.recipient;
-    email.delivery = 'pending';
-    updateGmailInboxUI();
-    deliverViaEmailJS(email).then(() => viewGmailMessage(emailId));
 }
 
-function setTestEmailStatus(status, message) {
-    const el = document.getElementById('testEmailStatus');
-    if (!el) return;
-    el.className = `test-email-status ${status}`;
-    el.textContent = message;
-    el.classList.toggle('hidden', !message);
-}
+function showAlertBanner(alert) {
+    const banner = document.getElementById('alertBanner');
+    if (!banner) return;
+    const meta = ALERT_META[alert.type];
 
-// ============================================================
-//  DAILY DIGEST EMAIL
-// ============================================================
-function buildDailyDigest(now = new Date()) {
-    const todayKey = getDateKey(now);
-    const pending = appData.tasks.filter(t => !t.completed);
-    const overdue = pending.filter(t => new Date(t.deadline) < now);
-    const dueToday = pending.filter(t => new Date(t.deadline) >= now && getDateKey(t.deadline) === todayKey);
-
-    const line = t => `• ${t.title} [${t.category.toUpperCase()}, ${t.priority}] — due ${new Date(t.deadline).toLocaleString()}`;
-    const sections = [];
-    if (overdue.length) sections.push(`OVERDUE (${overdue.length}):\n${overdue.map(line).join('\n')}`);
-    if (dueToday.length) sections.push(`DUE TODAY (${dueToday.length}):\n${dueToday.map(line).join('\n')}`);
-
-    return {
-        overdue,
-        dueToday,
-        pendingCount: pending.length,
-        subject: `📋 [TaskForge Digest] ${dueToday.length} due today, ${overdue.length} overdue`,
-        bodyText: sections.length
-            ? `Here's your TaskForge plan for ${now.toLocaleDateString()}.\n\n${sections.join('\n\n')}\n\nYou have ${pending.length} open task${pending.length !== 1 ? 's' : ''} in total.`
-            : `Nothing due today and nothing overdue — you have ${pending.length} open task${pending.length !== 1 ? 's' : ''}. Keep the streak alive! ⚡`
-    };
-}
-
-function sendDailyDigest() {
-    const digest = buildDailyDigest();
-    return dispatchEmail({
-        taskId: null,
-        taskTitle: 'Daily Digest',
-        category: 'all',
-        priority: digest.overdue.length ? 'high' : 'medium',
-        deadline: null,
-        type: 'digest',
-        subject: digest.subject,
-        bodyText: digest.bodyText,
-        digestItems: [...digest.overdue, ...digest.dueToday].map(t => ({
-            title: t.title, category: t.category, deadline: t.deadline, overdue: new Date(t.deadline) < new Date()
-        }))
-    });
-}
-
-function checkDailyDigest(now) {
-    if (!appSettings.digestEnabled) return;
-    const todayKey = getDateKey(now);
-    if (appData.lastDigestDate === todayKey) return;
-
-    const [h, m] = (appSettings.digestTime || '08:00').split(':').map(Number);
-    const scheduled = new Date(now);
-    scheduled.setHours(h || 0, m || 0, 0, 0);
-    if (now < scheduled) return;
-
-    appData.lastDigestDate = todayKey;
-    saveData(appData);
-
-    // Don't email an empty digest when there's nothing open at all
-    if (appData.tasks.some(t => !t.completed)) sendDailyDigest();
-}
-
-function showGmailLiveBanner(emailEntry) {
-    const banner = document.getElementById('gmailLiveBanner');
-    const titleEl = document.getElementById('gmailBannerTitle');
-    const bodyEl = document.getElementById('gmailBannerBody');
-    if (!banner || !titleEl || !bodyEl) return;
-
-    titleEl.textContent = `📬 Gmail: ${emailEntry.subject}`;
-    bodyEl.textContent = `Delivered to ${emailEntry.recipient} • Click to read`;
-
-    banner.classList.add('active');
+    document.getElementById('alertBannerIcon').textContent = meta.icon;
+    document.getElementById('alertBannerTitle').textContent = `${meta.label}: ${alert.taskTitle}`;
+    document.getElementById('alertBannerBody').textContent = alert.message;
+    banner.className = `alert-banner active ${alert.type}`;
 
     // Auto dismiss after 7 seconds
     if (banner._timeout) clearTimeout(banner._timeout);
@@ -835,113 +659,83 @@ function showGmailLiveBanner(emailEntry) {
     }, 7000);
 }
 
-function updateGmailInboxUI() {
-    const listEl = document.getElementById('gmailMessageList');
-    const badgeEl = document.getElementById('unreadEmailBadge');
-    const countEl = document.getElementById('inboxCount');
-    const targetEl = document.getElementById('inboxTargetEmail');
+function formatRelativeTime(iso) {
+    const mins = Math.floor((Date.now() - new Date(iso)) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
 
+function renderAlerts() {
+    const listEl = document.getElementById('alertsList');
+    const badgeEl = document.getElementById('unreadAlertBadge');
+    const pillEl = document.getElementById('alertsUnreadPill');
     if (!listEl) return;
 
-    const unreadCount = appData.gmailInbox.filter(m => !m.read).length;
+    const unreadCount = appData.alerts.filter(a => !a.read).length;
     if (badgeEl) {
         badgeEl.textContent = unreadCount;
         badgeEl.classList.toggle('has-unread', unreadCount > 0);
     }
-    if (countEl) countEl.textContent = appData.gmailInbox.length;
-    if (targetEl) targetEl.textContent = appSettings.userEmail || 'user@gmail.com';
+    if (pillEl) {
+        pillEl.textContent = `${unreadCount} new`;
+        pillEl.classList.toggle('hidden', unreadCount === 0);
+    }
 
-    if (appData.gmailInbox.length === 0) {
-        listEl.innerHTML = `
-            <div class="empty-state">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                <p>No Gmail notifications yet. Trigger a test email above or set task reminders!</p>
-            </div>
-        `;
+    if (appData.alerts.length === 0) {
+        listEl.innerHTML = `<div class="alerts-empty">No alerts yet. Reminders, deadlines and overdue follow-ups will show up here.</div>`;
         return;
     }
 
-    listEl.innerHTML = appData.gmailInbox.map(email => {
-        const timeStr = new Date(email.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    listEl.innerHTML = appData.alerts.map(alert => {
+        const meta = ALERT_META[alert.type] || ALERT_META.test;
+        const task = appData.tasks.find(t => t.id === alert.taskId);
+        const canComplete = task && !task.completed;
         return `
-            <div class="gmail-msg-item ${!email.read ? 'unread' : ''}" onclick="viewGmailMessage('${email.id}')">
-                <span class="gmail-msg-sender">TaskForge Bot</span>
-                <span class="gmail-msg-snippet">
-                    <strong>${escapeHTML(email.subject)}</strong>
-                    ${escapeHTML(email.bodyText)}
-                </span>
-                ${renderDeliveryPill(email)}
-                <span class="gmail-msg-time">${timeStr}</span>
+            <div class="alert-item ${alert.type} ${alert.read ? '' : 'unread'}" onclick="markAlertRead('${alert.id}')">
+                <span class="alert-item-icon">${meta.icon}</span>
+                <div class="alert-item-body">
+                    <div class="alert-item-title">
+                        <span class="alert-item-label">${meta.label}</span>
+                        ${escapeHTML(alert.taskTitle)}
+                        ${alert.category && CATEGORIES.includes(alert.category) ? `<span class="alert-cat-pill ${alert.category}">${alert.category}</span>` : ''}
+                    </div>
+                    <div class="alert-item-msg">${escapeHTML(alert.message)}</div>
+                </div>
+                <span class="alert-item-time">${formatRelativeTime(alert.timestamp)}</span>
+                <div class="alert-item-actions">
+                    ${canComplete ? `<button type="button" class="alert-done-btn" onclick="event.stopPropagation(); completeFromAlert('${alert.id}')" title="Mark task done">✓ Done</button>` : ''}
+                    ${task && task.completed ? `<span class="alert-completed-tag">Completed</span>` : ''}
+                    <button type="button" class="alert-dismiss-btn" onclick="event.stopPropagation(); dismissAlert('${alert.id}')" title="Dismiss alert" aria-label="Dismiss alert">&times;</button>
+                </div>
             </div>
         `;
     }).join('');
 }
 
-const DELIVERY_LABELS = {
-    local: { text: 'Local', title: 'Logged in-app only (EmailJS not connected)' },
-    pending: { text: 'Sending…', title: 'Delivering via EmailJS' },
-    sent: { text: 'Sent', title: 'Delivered via EmailJS' },
-    failed: { text: 'Failed', title: 'EmailJS delivery failed — open to retry' }
-};
-
-function renderDeliveryPill(email) {
-    // Entries logged before delivery tracking existed have no status
-    const info = DELIVERY_LABELS[email.delivery];
-    if (!info) return '';
-    return `<span class="delivery-pill ${email.delivery}" title="${escapeHTML(email.deliveryError || info.title)}">${info.text}</span>`;
+function markAlertRead(id) {
+    const alert = appData.alerts.find(a => a.id === id);
+    if (!alert || alert.read) return;
+    alert.read = true;
+    saveData(appData);
+    renderAlerts();
 }
 
-function viewGmailMessage(emailId) {
-    const email = appData.gmailInbox.find(m => m.id === emailId);
-    if (!email) return;
-
-    email.read = true;
+function dismissAlert(id) {
+    appData.alerts = appData.alerts.filter(a => a.id !== id);
     saveData(appData);
-    updateGmailInboxUI();
+    renderAlerts();
+}
 
-    const readerView = document.getElementById('gmailReaderView');
-    const listEl = document.getElementById('gmailMessageList');
-    const contentEl = document.getElementById('emailFullContent');
-
-    listEl.classList.add('hidden');
-    readerView.classList.remove('hidden');
-
-    contentEl.innerHTML = `
-        <h3 class="email-subject">${escapeHTML(email.subject)}</h3>
-        <div class="email-meta-header">
-            <div>
-                <strong>From:</strong> TaskForge Notifications &lt;notifications@taskforge.app&gt;<br>
-                <strong>To:</strong> ${escapeHTML(email.recipient)}
-            </div>
-            <div>${new Date(email.timestamp).toLocaleString()}</div>
-        </div>
-        <div class="email-body-text">${escapeHTML(email.bodyText)}</div>
-        ${email.type === 'digest' ? (email.digestItems || []).map(item => `
-            <div class="email-task-box ${item.overdue ? 'overdue' : ''}">
-                <div class="email-task-title">${escapeHTML(item.title)}</div>
-                <div class="email-task-meta">
-                    <span>Category: <strong>${item.category.toUpperCase()}</strong></span>
-                    <span>${item.overdue ? 'Was due' : 'Due'}: <strong>${new Date(item.deadline).toLocaleString()}</strong></span>
-                </div>
-            </div>
-        `).join('') : email.deadline ? `
-            <div class="email-task-box">
-                <div class="email-task-title">${escapeHTML(email.taskTitle)}</div>
-                <div class="email-task-meta">
-                    <span>Category: <strong>${email.category.toUpperCase()}</strong></span>
-                    <span>Priority: <strong>${email.priority.toUpperCase()}</strong></span>
-                    <span>Deadline: <strong>${new Date(email.deadline).toLocaleString()}</strong></span>
-                </div>
-            </div>
-        ` : ''}
-        ${email.delivery ? `
-            <div class="email-delivery-status ${email.delivery}">
-                ${renderDeliveryPill(email)}
-                <span>${escapeHTML(email.deliveryError || DELIVERY_LABELS[email.delivery].title)}</span>
-                ${email.delivery === 'failed' ? `<button type="button" class="btn-ghost" onclick="retryEmailDelivery('${email.id}')">↻ Retry delivery</button>` : ''}
-            </div>
-        ` : ''}
-    `;
+function completeFromAlert(id) {
+    const alert = appData.alerts.find(a => a.id === id);
+    if (!alert) return;
+    alert.read = true;
+    const task = appData.tasks.find(t => t.id === alert.taskId);
+    if (task && !task.completed) toggleTask(task.id);
+    renderAlerts();
 }
 
 // ============================================================
@@ -953,7 +747,7 @@ function startNotificationHeartbeat() {
         let changed = false;
 
         appData.tasks.forEach(task => {
-            if (task.completed || !task.emailNotify) return;
+            if (task.completed || !task.alertsOn) return;
             const deadlineTime = task.deadline ? new Date(task.deadline).getTime() : null;
 
             // 1. Reminder Check
@@ -966,8 +760,7 @@ function startNotificationHeartbeat() {
                     const coveredByDeadline = appSettings.deadlineAlerts && !task.deadlineNotifySent
                         && deadlineTime !== null && now >= deadlineTime && reminderTime < deadlineTime;
                     if (appSettings.reminderAlerts && !coveredByDeadline) {
-                        triggerGmailAlert(task, 'reminder');
-                        showToast(`⏰ Reminder: "${task.title}" is due soon!`, 'warning');
+                        triggerAlert(task, 'reminder');
                     }
                 }
             }
@@ -978,8 +771,7 @@ function startNotificationHeartbeat() {
                 task.lastOverdueAlertAt = now;
                 changed = true;
                 if (appSettings.deadlineAlerts) {
-                    triggerGmailAlert(task, 'deadline');
-                    showToast(`🚨 Deadline Reached: "${task.title}" is due now!`, 'error');
+                    triggerAlert(task, 'deadline');
                 }
             }
 
@@ -991,19 +783,19 @@ function startNotificationHeartbeat() {
                     task.overdueAlertCount = (task.overdueAlertCount || 0) + 1;
                     task.lastOverdueAlertAt = now;
                     changed = true;
-                    triggerGmailAlert(task, 'overdue');
-                    showToast(`🔁 Still overdue: "${task.title}"`, 'warning');
+                    triggerAlert(task, 'overdue');
                 }
             }
         });
-
-        checkDailyDigest(new Date(now));
 
         if (changed) {
             saveData(appData);
             renderTasks();
         }
     }, 1000);
+
+    // Keep "5m ago" labels fresh
+    setInterval(renderAlerts, 60000);
 }
 
 
@@ -1123,7 +915,7 @@ function setupEventListeners() {
             deadline: deadline.toISOString(),
             reminder: reminder ? reminder.toISOString() : null,
             priority: 'medium',
-            emailNotify: true
+            alertsOn: true
         });
 
         quickInput.value = '';
@@ -1153,7 +945,7 @@ function setupEventListeners() {
                     deadline: tomorrow.toISOString(),
                     reminder: reminder.toISOString(),
                     priority: 'medium',
-                    emailNotify: true
+                    alertsOn: true
                 });
 
                 input.value = '';
@@ -1186,7 +978,7 @@ function setupEventListeners() {
         const deadline = document.getElementById('taskDeadline').value;
         const reminder = document.getElementById('taskReminder').value;
         const priority = document.querySelector('input[name="priority"]:checked').value;
-        const emailNotify = document.getElementById('taskEmailNotify').checked;
+        const alertsOn = document.getElementById('taskAlertsOn').checked;
 
         if (!title) return;
 
@@ -1197,170 +989,73 @@ function setupEventListeners() {
             deadline: new Date(deadline).toISOString(),
             reminder: reminder ? new Date(reminder).toISOString() : null,
             priority,
-            emailNotify
+            alertsOn
         });
 
         closeModal('taskModal');
         document.getElementById('taskForm').reset();
     });
 
-    // 4. GMAIL INBOX MODAL
-    document.getElementById('gmailInboxBtn').addEventListener('click', () => {
-        updateGmailInboxUI();
-        document.getElementById('gmailMessageList').classList.remove('hidden');
-        document.getElementById('gmailReaderView').classList.add('hidden');
-        openModal('gmailInboxModal');
+    // 4. ALERTS PANEL
+    document.getElementById('alertsBtn').addEventListener('click', () => {
+        document.getElementById('alertsPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
-    document.getElementById('gmailInboxClose').addEventListener('click', () => closeModal('gmailInboxModal'));
-
-    document.getElementById('gmailBannerViewBtn').addEventListener('click', () => {
-        document.getElementById('gmailLiveBanner').classList.remove('active');
-        document.getElementById('gmailInboxBtn').click();
+    document.getElementById('alertBannerViewBtn').addEventListener('click', () => {
+        document.getElementById('alertBanner').classList.remove('active');
+        document.getElementById('alertsPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
-    document.getElementById('gmailBannerCloseBtn').addEventListener('click', () => {
-        document.getElementById('gmailLiveBanner').classList.remove('active');
+    document.getElementById('alertBannerCloseBtn').addEventListener('click', () => {
+        document.getElementById('alertBanner').classList.remove('active');
     });
 
-    document.getElementById('backToInboxBtn').addEventListener('click', () => {
-        document.getElementById('gmailReaderView').classList.add('hidden');
-        document.getElementById('gmailMessageList').classList.remove('hidden');
-    });
-
-    document.getElementById('clearInboxBtn').addEventListener('click', () => {
-        appData.gmailInbox = [];
+    document.getElementById('markAlertsReadBtn').addEventListener('click', () => {
+        appData.alerts.forEach(a => { a.read = true; });
         saveData(appData);
-        updateGmailInboxUI();
-        showToast('Inbox log cleared', 'info');
+        renderAlerts();
     });
 
-    // Simulate Reminder Test Email
-    document.getElementById('testReminderBtn').addEventListener('click', () => {
-        const dummyTask = {
-            id: 'test_rem_' + Date.now(),
-            title: 'Sample Productivity Milestone: Finish Chapter 4',
-            category: 'productivity',
-            priority: 'high',
-            deadline: new Date(Date.now() + 3600000).toISOString()
-        };
-        triggerGmailAlert(dummyTask, 'reminder');
-        showToast('📬 Sent test reminder Gmail alert!', 'success');
-    });
-
-    // Simulate Deadline Test Email
-    document.getElementById('testDeadlineBtn').addEventListener('click', () => {
-        const dummyTask = {
-            id: 'test_dl_' + Date.now(),
-            title: 'Gym Workout & 100 Pushups',
-            category: 'sports',
-            priority: 'high',
-            deadline: new Date().toISOString()
-        };
-        triggerGmailAlert(dummyTask, 'deadline');
-        showToast('🚨 Sent test deadline reached Gmail alert!', 'error');
+    document.getElementById('clearAlertsBtn').addEventListener('click', () => {
+        appData.alerts = [];
+        saveData(appData);
+        renderAlerts();
+        showToast('Alerts cleared', 'info');
     });
 
     // 5. SETTINGS
     document.getElementById('settingsBtn').addEventListener('click', () => {
-        document.getElementById('userEmail').value = appSettings.userEmail || '';
         document.getElementById('soundChimeToggle').checked = appSettings.soundChime !== false;
-        document.getElementById('emailjsPublicKey').value = appSettings.publicKey || '';
-        document.getElementById('emailjsServiceId').value = appSettings.serviceId || '';
-        document.getElementById('emailjsTemplateId').value = appSettings.templateId || '';
         document.getElementById('reminderAlertsToggle').checked = appSettings.reminderAlerts !== false;
         document.getElementById('deadlineAlertsToggle').checked = appSettings.deadlineAlerts !== false;
         document.getElementById('overdueFollowUp').value = String(appSettings.overdueFollowUpHours || 0);
-        document.getElementById('digestToggle').checked = !!appSettings.digestEnabled;
-        document.getElementById('digestTime').value = appSettings.digestTime || '08:00';
-        document.getElementById('digestTime').disabled = !appSettings.digestEnabled;
-        setTestEmailStatus('', '');
         openModal('settingsModal');
     });
 
     document.getElementById('settingsClose').addEventListener('click', () => closeModal('settingsModal'));
     document.getElementById('settingsCancelBtn').addEventListener('click', () => closeModal('settingsModal'));
 
-    document.getElementById('digestToggle').addEventListener('change', (e) => {
-        document.getElementById('digestTime').disabled = !e.target.checked;
-    });
-
-    const readSettingsForm = () => {
-        appSettings.userEmail = document.getElementById('userEmail').value.trim() || 'user@gmail.com';
-        const rooms = getRooms();
-        const roomId = getSessionRoom();
-        if (rooms[roomId] && rooms[roomId].email !== appSettings.userEmail) {
-            rooms[roomId].email = appSettings.userEmail;
-            saveRooms(rooms);
-            updateRoomUI();
-        }
+    document.getElementById('saveSettingsBtn').addEventListener('click', () => {
         appSettings.soundChime = document.getElementById('soundChimeToggle').checked;
-        appSettings.publicKey = document.getElementById('emailjsPublicKey').value.trim();
-        appSettings.serviceId = document.getElementById('emailjsServiceId').value.trim();
-        appSettings.templateId = document.getElementById('emailjsTemplateId').value.trim();
         appSettings.reminderAlerts = document.getElementById('reminderAlertsToggle').checked;
         appSettings.deadlineAlerts = document.getElementById('deadlineAlertsToggle').checked;
         appSettings.overdueFollowUpHours = Number(document.getElementById('overdueFollowUp').value) || 0;
 
-        const digestTime = document.getElementById('digestTime').value || '08:00';
-        if (digestTime !== appSettings.digestTime) {
-            // A new digest time today should still fire if it hasn't passed yet
-            const [h, m] = digestTime.split(':').map(Number);
-            const scheduled = new Date();
-            scheduled.setHours(h, m, 0, 0);
-            if (scheduled > new Date() && appData.lastDigestDate === getDateKey(new Date())) {
-                appData.lastDigestDate = null;
-                saveData(appData);
-            }
-        }
-        appSettings.digestEnabled = document.getElementById('digestToggle').checked;
-        appSettings.digestTime = digestTime;
-
         saveSettings(appSettings);
-    };
-
-    document.getElementById('saveSettingsBtn').addEventListener('click', () => {
-        readSettingsForm();
         closeModal('settingsModal');
-        showToast('Notification settings saved!', 'success');
-        updateGmailInboxUI();
+        showToast('Alert settings saved!', 'success');
     });
 
-    document.getElementById('sendTestEmailBtn').addEventListener('click', () => {
-        readSettingsForm();
-        updateGmailInboxUI();
-
-        const btn = document.getElementById('sendTestEmailBtn');
-        btn.disabled = true;
-        setTestEmailStatus('pending', isEmailJSConfigured() ? `Sending to ${appSettings.userEmail}…` : 'Logging test email…');
-
-        dispatchEmail({
-            taskId: null,
-            taskTitle: 'Test Email',
-            category: 'test',
-            priority: 'low',
-            deadline: null,
-            type: 'test',
-            subject: '✅ [TaskForge] Test email — your alerts are working!',
-            bodyText: `This is a test email from TaskForge sent to ${appSettings.userEmail}. Reminder, deadline, follow-up and digest alerts will arrive here.`
-        }, { silent: true }).then(entry => {
-            btn.disabled = false;
-            if (entry.delivery === 'sent') {
-                setTestEmailStatus('sent', `Delivered to ${entry.recipient}. Check your inbox (and spam folder).`);
-            } else if (entry.delivery === 'failed') {
-                setTestEmailStatus('failed', entry.deliveryError);
-            } else {
-                setTestEmailStatus('local', 'Logged to the in-app inbox only. Connect EmailJS below to receive real emails.');
-            }
-        });
+    document.getElementById('testAlertBtn').addEventListener('click', () => {
+        closeModal('settingsModal');
+        triggerAlert({
+            id: null,
+            title: 'Sample task',
+            category: 'productivity',
+            priority: 'medium',
+            deadline: new Date(Date.now() + 3600000).toISOString()
+        }, 'test');
     });
-
-    document.getElementById('sendDigestNowBtn').addEventListener('click', () => {
-        readSettingsForm();
-        sendDailyDigest();
-        showToast('📋 Daily digest sent!', 'success');
-    });
-
 
     // 7. SECTION COLLAPSE
     document.querySelectorAll('.btn-collapse').forEach(btn => {
@@ -1415,12 +1110,10 @@ async function hashPasscode(passcode) {
 
 function setRoomCreateMode(on) {
     roomCreateMode = on;
-    document.getElementById('roomEmailGroup').classList.toggle('hidden', !on);
-    document.getElementById('roomEmail').required = on;
-    document.getElementById('roomSubmitBtn').textContent = on ? 'Create Room & Enable Alerts' : 'Enter Room';
+    document.getElementById('roomSubmitBtn').textContent = on ? 'Create New Room' : 'Enter Room';
     document.getElementById('roomHint').textContent = on
-        ? 'No room uses this passcode yet. Add the email where alerts should be sent to create it.'
-        : 'Enter your room passcode. New passcode? You\'ll be asked for an alert email to create the room.';
+        ? 'No room uses this passcode yet. Check it for typos, or click "Create New Room" to make one.'
+        : 'Enter your room passcode. Using a new passcode creates a new room.';
     showRoomError('');
 }
 
@@ -1442,28 +1135,21 @@ async function handleRoomSubmit(e) {
     const rooms = getRooms();
 
     if (!rooms[roomId]) {
+        // Ask once before creating, so a typo doesn't silently open an empty room
         if (!roomCreateMode) {
             setRoomCreateMode(true);
-            document.getElementById('roomEmail').focus();
-            return;
-        }
-
-        const email = document.getElementById('roomEmail').value.trim().toLowerCase();
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            showRoomError('Please enter a valid email address for alerts.');
             return;
         }
 
         // The first room on this browser adopts any tasks from before rooms existed
         const legacy = Object.keys(rooms).length === 0 ? loadLegacyData() : null;
         rooms[roomId] = {
-            email: email,
             createdAt: new Date().toISOString(),
             data: legacy && legacy.tasks.length ? legacy : structuredClone(DEFAULT_DATA)
         };
         saveRooms(rooms);
         enterRoom(roomId, rooms[roomId]);
-        showToast(`🎉 Room created! Alerts will be emailed to ${email}`, 'success');
+        showToast('🎉 Room created! Alerts will show on your dashboard.', 'success');
     } else {
         enterRoom(roomId, rooms[roomId]);
         showToast('⚡ Welcome back to your room!', 'success');
@@ -1473,8 +1159,6 @@ async function handleRoomSubmit(e) {
 function enterRoom(roomId, room) {
     setSessionRoom(roomId);
     appData = normalizeData(room.data);
-    appSettings.userEmail = room.email;
-    saveSettings(appSettings);
 
     closeModal('roomModal');
     document.getElementById('roomForm').reset();
@@ -1482,7 +1166,7 @@ function enterRoom(roomId, room) {
     updateRoomUI();
     renderHeatmaps();
     renderTasks();
-    updateGmailInboxUI();
+    renderAlerts();
 }
 
 function handleLeaveRoom() {
@@ -1493,7 +1177,7 @@ function handleLeaveRoom() {
     updateRoomUI();
     renderHeatmaps();
     renderTasks();
-    updateGmailInboxUI();
+    renderAlerts();
     showRoomGate();
     showToast('Left room. Enter a passcode to continue.', 'info');
 }
@@ -1508,10 +1192,7 @@ function updateRoomUI() {
     const roomId = getSessionRoom();
     const room = roomId && getRooms()[roomId];
     const chip = document.getElementById('roomChip');
-    const emailEl = document.getElementById('roomEmailDisplay');
-
     if (chip) chip.classList.toggle('hidden', !room);
-    if (room && emailEl) emailEl.textContent = room.email;
 }
 
 // ============================================================
@@ -1526,7 +1207,7 @@ function init() {
     updateRoomUI();
     renderHeatmaps();
     renderTasks();
-    updateGmailInboxUI();
+    renderAlerts();
     startNotificationHeartbeat();
 
     const roomId = getSessionRoom();

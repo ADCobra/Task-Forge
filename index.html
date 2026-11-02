@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaskForge — Codeforces-Style Task Tracker with Gmail Notifications</title>
-    <meta name="description" content="TaskForge is a high-performance task management system featuring Codeforces-style activity heatmaps, instant quick-add, and automated Gmail notifications for Sports, Chores, and Productivity.">
+    <title>TaskForge — Codeforces-Style Task Tracker with Dashboard Alerts</title>
+    <meta name="description" content="TaskForge is a high-performance task management system featuring Codeforces-style activity heatmaps, instant quick-add, and live dashboard alerts for Sports, Chores, and Productivity.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -50,22 +50,22 @@
 
 
                 <!-- Current Room -->
-                <div class="user-profile-chip hidden" id="roomChip" title="Alerts are emailed to this address">
+                <div class="user-profile-chip hidden" id="roomChip" title="You're in a passcode room">
                     <div class="user-avatar">🔑</div>
-                    <span class="user-email-text" id="roomEmailDisplay">you@gmail.com</span>
+                    <span class="user-email-text">Room</span>
                     <button class="btn-signout" id="leaveRoomBtn" title="Leave Room" aria-label="Leave Room">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                     </button>
                 </div>
 
-                <!-- Gmail Notification Inbox Bell -->
-                <button class="btn-icon" id="gmailInboxBtn" title="Gmail Notifications Log" aria-label="Gmail Notifications">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                    <span class="notification-badge" id="unreadEmailBadge">0</span>
+                <!-- Alerts Bell -->
+                <button class="btn-icon" id="alertsBtn" title="Jump to alerts" aria-label="Alerts">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <span class="notification-badge" id="unreadAlertBadge">0</span>
                 </button>
 
-                <!-- Email / App Settings -->
-                <button class="btn-icon" id="settingsBtn" title="Email & Notification Settings" aria-label="Settings">
+                <!-- Alert Settings -->
+                <button class="btn-icon" id="settingsBtn" title="Alert Settings" aria-label="Settings">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 13a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5"/><path d="M17.4 10c0-.6-.4-1.1-1-1.2l-1-.2a6.5 6.5 0 00-.6-1.4l.6-.9c.3-.5.2-1.1-.2-1.5l-.1-.1c-.4-.4-1-.5-1.5-.2l-.9.6a6.5 6.5 0 00-1.4-.6l-.2-1c-.1-.6-.6-1-1.2-1h-.1c-.6 0-1.1.4-1.2 1l-.2 1a6.5 6.5 0 00-1.4.6l-.9-.6c-.5-.3-1.1-.2-1.5.2l-.1.1c-.4.4-.5 1-.2 1.5l.6.9a6.5 6.5 0 00-.6 1.4l-1 .2c-.6.1-1 .6-1 1.2v.1c0 .6.4 1.1 1 1.2l1 .2a6.5 6.5 0 00.6 1.4l-.6.9c-.3.5-.2 1.1.2 1.5l.1.1c.4.4 1 .5 1.5.2l.9-.6a6.5 6.5 0 001.4.6l.2 1c.1.6.6 1 1.2 1h.1c.6 0 1.1-.4 1.2-1l.2-1a6.5 6.5 0 001.4-.6l.9.6c.5.3 1.1.2 1.5-.2l.1-.1c.4-.4.5-1 .2-1.5l-.6-.9a6.5 6.5 0 00.6-1.4l1-.2c.6-.1 1-.6 1-1.2V10z" stroke="currentColor" stroke-width="1.5"/></svg>
                 </button>
 
@@ -80,18 +80,16 @@
 
     <!-- Main Content -->
     <main id="app-main">
-        <!-- Live Gmail Notification Banner (pops down when triggered) -->
-        <div class="gmail-live-banner" id="gmailLiveBanner">
-            <div class="gmail-banner-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#EA4335"/><path d="M22 6l-10 7L2 6" stroke="#FFFFFF" stroke-width="2"/></svg>
+        <!-- Live Alert Banner (pops down when an alert fires) -->
+        <div class="alert-banner" id="alertBanner">
+            <div class="alert-banner-icon" id="alertBannerIcon">🔔</div>
+            <div class="alert-banner-content">
+                <div class="alert-banner-title" id="alertBannerTitle">Alert</div>
+                <div class="alert-banner-body" id="alertBannerBody"></div>
             </div>
-            <div class="gmail-banner-content">
-                <div class="gmail-banner-title" id="gmailBannerTitle">Gmail Notification Delivered</div>
-                <div class="gmail-banner-body" id="gmailBannerBody">Reminder sent for task</div>
-            </div>
-            <div class="gmail-banner-actions">
-                <button class="btn-banner-view" id="gmailBannerViewBtn">View Email</button>
-                <button class="btn-banner-close" id="gmailBannerCloseBtn" aria-label="Close notification">&times;</button>
+            <div class="alert-banner-actions">
+                <button class="btn-banner-view" id="alertBannerViewBtn">View</button>
+                <button class="btn-banner-close" id="alertBannerCloseBtn" aria-label="Close alert">&times;</button>
             </div>
         </div>
 
@@ -112,6 +110,24 @@
             <div class="stat-card">
                 <div class="stat-value text-accent-coral" id="overdueTasks">0</div>
                 <div class="stat-label">Overdue</div>
+            </div>
+        </section>
+
+        <!-- DASHBOARD ALERTS PANEL -->
+        <section class="alerts-panel" id="alertsPanel">
+            <div class="alerts-panel-header">
+                <div class="alerts-panel-title">
+                    <span class="alerts-panel-icon">🔔</span>
+                    <h2>Alerts</h2>
+                    <span class="alerts-unread-pill hidden" id="alertsUnreadPill">0 new</span>
+                </div>
+                <div class="alerts-panel-actions">
+                    <button type="button" class="btn-ghost" id="markAlertsReadBtn">Mark all read</button>
+                    <button type="button" class="btn-ghost" id="clearAlertsBtn">Clear</button>
+                </div>
+            </div>
+            <div class="alerts-list" id="alertsList">
+                <!-- Populated dynamically -->
             </div>
         </section>
 
@@ -168,7 +184,7 @@
                         </div>
 
                         <div class="quick-select-group">
-                            <label for="quickReminderPreset">Gmail Alert:</label>
+                            <label for="quickReminderPreset">Alert:</label>
                             <select id="quickReminderPreset" class="quick-select">
                                 <option value="15m" selected>15 min before</option>
                                 <option value="1h">1 hour before</option>
@@ -490,7 +506,7 @@
                         <input type="datetime-local" id="taskDeadline" required>
                     </div>
                     <div class="form-group">
-                        <label for="taskReminder">Gmail Reminder Time</label>
+                        <label for="taskReminder">Reminder Time</label>
                         <input type="datetime-local" id="taskReminder">
                     </div>
                 </div>
@@ -515,9 +531,9 @@
 
                 <div class="form-group checkbox-group">
                     <label class="checkbox-label">
-                        <input type="checkbox" id="taskEmailNotify" checked>
+                        <input type="checkbox" id="taskAlertsOn" checked>
                         <span class="checkmark"></span>
-                        Send Gmail alerts (at reminder time & when deadline reaches)
+                        Show dashboard alerts (at reminder time &amp; when deadline reaches)
                     </label>
                 </div>
 
@@ -529,61 +545,13 @@
         </div>
     </div>
 
-    <!-- GMAIL INBOX / NOTIFICATIONS LOG MODAL -->
-    <div class="modal-overlay" id="gmailInboxModal">
-        <div class="modal modal-lg" role="dialog" aria-labelledby="gmailInboxTitle">
-            <div class="modal-header gmail-inbox-header">
-                <div class="modal-title-wrap">
-                    <div class="gmail-brand-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#EA4335"/><path d="M22 6l-10 7L2 6" stroke="#FFFFFF" stroke-width="2"/></svg>
-                    </div>
-                    <div>
-                        <h2 id="gmailInboxTitle">Gmail Notification Center</h2>
-                        <span class="gmail-inbox-subtitle" id="gmailInboxTarget">Target: <strong id="inboxTargetEmail">you@gmail.com</strong></span>
-                    </div>
-                </div>
-                <div class="gmail-inbox-top-actions">
-                    <button type="button" class="btn-ghost" id="testReminderBtn" title="Simulate a reminder email right now">
-                        ⏰ Test Reminder
-                    </button>
-                    <button type="button" class="btn-ghost" id="testDeadlineBtn" title="Simulate a deadline reached email right now">
-                        🚨 Test Deadline
-                    </button>
-                    <button class="btn-icon modal-close" id="gmailInboxClose" aria-label="Close inbox">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><line x1="5" y1="5" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="5" x2="5" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                    </button>
-                </div>
-            </div>
-
-            <div class="modal-body gmail-inbox-body">
-                <div class="gmail-tabs">
-                    <span class="gmail-tab active" id="tabInbox">Inbox (<span id="inboxCount">0</span>)</span>
-                    <button type="button" class="btn-clear-inbox" id="clearInboxBtn">Clear Log</button>
-                </div>
-
-                <div class="gmail-message-list" id="gmailMessageList">
-                    <!-- Populated dynamically -->
-                </div>
-
-                <!-- Email Message Reader View -->
-                <div class="gmail-reader-view hidden" id="gmailReaderView">
-                    <button type="button" class="btn-back-inbox" id="backToInboxBtn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-                        Back to Inbox
-                    </button>
-                    <div class="email-full-card" id="emailFullContent"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- SETTINGS MODAL -->
     <div class="modal-overlay" id="settingsModal">
         <div class="modal" role="dialog" aria-labelledby="settingsTitle">
             <div class="modal-header">
                 <div class="modal-title-wrap">
                     <div class="modal-icon">⚙️</div>
-                    <h2 id="settingsTitle">Gmail & Notification Settings</h2>
+                    <h2 id="settingsTitle">Alert Settings</h2>
                 </div>
                 <button class="btn-icon modal-close" id="settingsClose" aria-label="Close settings">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><line x1="5" y1="5" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="5" x2="5" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -592,87 +560,47 @@
             <div class="modal-body">
                 <div class="settings-info">
                     <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#6C5CE7" stroke-width="1.5"/><path d="M10 6v5M10 13v1" stroke="#6C5CE7" stroke-width="2" stroke-linecap="round"/></svg>
-                    <p>Enter your Gmail address below. Notifications trigger at your set reminder time and automatically when the deadline expires. You can send real emails via <a href="https://www.emailjs.com/" target="_blank" rel="noopener">EmailJS</a> or use the built-in instant Gmail Notification Center.</p>
-                </div>
-
-                <div class="form-group">
-                    <label for="userEmail">Your Gmail Address *</label>
-                    <input type="email" id="userEmail" placeholder="yourname@gmail.com">
+                    <p>Alerts appear in the <strong>Alerts</strong> panel on your dashboard, with a pop-up banner, an optional chime and a desktop notification (if your browser allows it).</p>
                 </div>
 
                 <div class="form-group checkbox-group">
                     <label class="checkbox-label">
                         <input type="checkbox" id="soundChimeToggle" checked>
                         <span class="checkmark"></span>
-                        Play audio notification chime when reminder/deadline triggers
+                        Play a chime when an alert fires
                     </label>
                 </div>
 
-                <fieldset class="email-alerts-settings">
-                    <legend>📧 Email Alerts</legend>
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="reminderAlertsToggle" checked>
+                        <span class="checkmark"></span>
+                        Reminder alerts (at each task's reminder time)
+                    </label>
+                </div>
 
-                    <div class="form-group checkbox-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="reminderAlertsToggle" checked>
-                            <span class="checkmark"></span>
-                            Reminder emails (at each task's reminder time)
-                        </label>
-                    </div>
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="deadlineAlertsToggle" checked>
+                        <span class="checkmark"></span>
+                        Deadline alerts (when a task's deadline is reached)
+                    </label>
+                </div>
 
-                    <div class="form-group checkbox-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="deadlineAlertsToggle" checked>
-                            <span class="checkmark"></span>
-                            Deadline emails (when a task's deadline is reached)
-                        </label>
-                    </div>
+                <div class="form-group">
+                    <label for="overdueFollowUp">Overdue Follow-ups</label>
+                    <select id="overdueFollowUp">
+                        <option value="0">Off</option>
+                        <option value="1">Every hour (max 3)</option>
+                        <option value="3">Every 3 hours (max 3)</option>
+                        <option value="6">Every 6 hours (max 3)</option>
+                        <option value="24">Every day (max 3)</option>
+                    </select>
+                </div>
 
-                    <div class="form-group">
-                        <label for="overdueFollowUp">Overdue Follow-ups</label>
-                        <select id="overdueFollowUp">
-                            <option value="0">Off</option>
-                            <option value="1">Every hour (max 3)</option>
-                            <option value="3">Every 3 hours (max 3)</option>
-                            <option value="6">Every 6 hours (max 3)</option>
-                            <option value="24">Every day (max 3)</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group digest-row">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="digestToggle">
-                            <span class="checkmark"></span>
-                            Daily digest email of overdue &amp; due-today tasks at
-                        </label>
-                        <input type="time" id="digestTime" value="08:00" aria-label="Daily digest time">
-                    </div>
-
-                    <div class="email-alerts-actions">
-                        <button type="button" class="btn-ghost" id="sendTestEmailBtn">✉️ Send Test Email</button>
-                        <button type="button" class="btn-ghost" id="sendDigestNowBtn">📋 Send Digest Now</button>
-                    </div>
-                    <div class="test-email-status hidden" id="testEmailStatus" role="status"></div>
-                    <p class="email-alerts-note">Alerts are sent while TaskForge is open in a browser tab. Alerts missed while it was closed are sent the next time you open it.</p>
-                </fieldset>
-
-                <details class="advanced-email-settings">
-                    <summary>Optional: Connect EmailJS for Real Remote Emails</summary>
-                    <div class="advanced-fields">
-                        <div class="form-group">
-                            <label for="emailjsPublicKey">EmailJS Public Key</label>
-                            <input type="text" id="emailjsPublicKey" placeholder="e.g. u8vXyz123...">
-                        </div>
-                        <div class="form-group">
-                            <label for="emailjsServiceId">EmailJS Service ID</label>
-                            <input type="text" id="emailjsServiceId" placeholder="e.g. service_gmail">
-                        </div>
-                        <div class="form-group">
-                            <label for="emailjsTemplateId">EmailJS Template ID</label>
-                            <input type="text" id="emailjsTemplateId" placeholder="e.g. template_task_alert">
-                        </div>
-                        <p class="email-alerts-note">Template variables: <code>{{to_email}}</code> (set as the template's "To Email"), <code>{{subject}}</code>, <code>{{message}}</code>, <code>{{task_title}}</code>, <code>{{task_category}}</code>, <code>{{task_deadline}}</code>.</p>
-                    </div>
-                </details>
+                <div class="form-group">
+                    <button type="button" class="btn-ghost" id="testAlertBtn">🔔 Show Test Alert</button>
+                </div>
 
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" id="settingsCancelBtn">Cancel</button>
@@ -692,17 +620,12 @@
                 </div>
             </div>
             <div class="modal-body auth-modal-body">
-                <p class="room-hint" id="roomHint">Enter your room passcode. New passcode? You'll be asked for an alert email to create the room.</p>
+                <p class="room-hint" id="roomHint">Enter your room passcode. Using a new passcode creates a new room.</p>
 
                 <form id="roomForm" autocomplete="off">
                     <div class="form-group">
                         <label for="roomPasscode">Room Passcode *</label>
                         <input type="password" id="roomPasscode" placeholder="At least 4 characters" required minlength="4" autocomplete="off">
-                    </div>
-
-                    <div class="form-group hidden" id="roomEmailGroup">
-                        <label for="roomEmail">Alert Email *</label>
-                        <input type="email" id="roomEmail" placeholder="yourname@gmail.com" autocomplete="email">
                     </div>
 
                     <div class="auth-error-msg hidden" id="roomErrorMsg"></div>
@@ -719,7 +642,6 @@
     <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
