@@ -1,30 +1,31 @@
-# TaskForge ⚡
+# TaskForge 98 ⚡
 
-> **Track. Conquer. Repeat.** — A high-performance task management system featuring Codeforces-style activity heatmaps, instant quick-add, and live dashboard alerts.
+> **Track. Conquer. Repeat.** — A retro, late-90s-desktop-style task tracker with a day-picker calendar, Codeforces-style activity heatmaps, instant quick-add, and live dashboard alerts.
 
 🌐 **Live Website**: [https://adcobra.github.io/Task-Forge/](https://adcobra.github.io/Task-Forge/)
-
-![TaskForge Banner](https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=1200&q=80)
 
 ---
 
 ## 🌟 Highlights
 
-- **Instant "Type & Enter" Task Creation**: Add tasks in milliseconds through the prominent Quick-Add Bar or category-specific inline inputs.
+- **Retro 90s Look (light mode)**: Beveled grey windows, navy title bars, a taskbar with a clock and scrolling ticker, pixel-font counters, and yellow system-tray alert balloons.
+- **Pick Your Days**: In **📝 New Task…** (or **📅 Pick Days…** from Quick Add), click any days on a month calendar — or use *Today*, *Next 7 days*, *Weekdays (2 wks)* — and the task shows up on each of them at its due time. Each day is ticked off separately.
+- **Calendar + Day View**: A calendar window marks days with tasks (blue), overdue work (red), and all-done days (green). Click a day, or use ◀ Today ▶, to see that day's tasks and stats.
+- **Instant "Type & Enter" Task Creation**: Quick Add and the per-category inputs add a task to the day you're viewing.
 - **Passcode Rooms (no sign-up)**: Open the site, type a passcode, and you're in. A new passcode creates your room (after a one-click confirm, so typos don't make empty rooms); the same passcode brings you back. Each room has its own tasks, streaks, and alerts. Passcodes are stored only as SHA-256 hashes.
-- **Codeforces-Style Heatmaps**: 52-week rolling activity grids with dynamic rating ranks (*Newbie* → *Pupil* → *Specialist* → *Expert* → *Candidate Master* → *Master* → *Grandmaster*).
+- **Codeforces-Style Heatmaps**: 53-week activity grids that fill the window (and scroll on phones, newest weeks first), with hover tooltips and rating ranks in their Codeforces colours (*Newbie* → *Pupil* → *Specialist* → *Expert* → *Candidate Master* → *Master* → *Grandmaster*).
 - **Three Dedicated Spheres**:
-  - 🏃 **Sports** (Electric Cyan / Specialist Tier)
-  - 🧹 **Chores** (Amber Gold / Candidate Master Tier)
-  - ⚡ **Productivity** (Coral Red / Grandmaster Tier)
+  - 🏃 **Sports** (teal)
+  - 🧹 **Chores** (amber)
+  - ⚡ **Productivity** (red)
 - **Continuous 1-Second Heartbeat Watcher**:
   - Automatically triggers reminders at your scheduled time.
   - Automatically triggers urgent alerts when deadlines expire.
 - **Dashboard Alerts**:
   - An **Alerts** panel right on the dashboard lists reminders, deadline hits, and overdue follow-ups, newest first.
   - Mark a task done straight from its alert, dismiss alerts one by one, mark all read, or clear the list.
-  - Unread count on the 🔔 bell, plus a slide-in banner, an optional chime, and desktop notifications when the browser allows them.
-  - Turn reminder and deadline alerts on or off, and choose overdue follow-ups (every 1h / 3h / 6h / 24h, max 3 per task).
+  - Unread count on the 🔔 Alerts button, plus a pop-up balloon, an optional chime, and desktop notifications when the browser allows them.
+  - Turn reminder and deadline alerts on or off, and choose overdue follow-ups (every 1h / 3h / 6h / 24h, max 3 per task day).
   - Alerts missed while the app was closed fire on next open, without doubling up a reminder for a task that's already past its deadline.
 - **Local Persistence**: Powered by `localStorage` for zero-setup, privacy-first offline capability.
 

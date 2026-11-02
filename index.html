@@ -3,608 +3,379 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaskForge — Codeforces-Style Task Tracker with Dashboard Alerts</title>
-    <meta name="description" content="TaskForge is a high-performance task management system featuring Codeforces-style activity heatmaps, instant quick-add, and live dashboard alerts for Sports, Chores, and Productivity.">
+    <meta name="color-scheme" content="light">
+    <title>TaskForge 98 — Retro Task Tracker</title>
+    <meta name="description" content="TaskForge is a retro, 90s-style task tracker with a day-picker calendar, Codeforces-style activity heatmaps, and live dashboard alerts for Sports, Chores, and Productivity.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Ambient Background Lighting -->
-    <div class="ambient-bg" aria-hidden="true">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
+    <div class="desktop">
+        <!-- APP HEADER WINDOW -->
+        <header class="win app-header" id="app-header">
+            <div class="title-bar">
+                <span class="title-bar-text">⚡ TaskForge 98 — Track. Conquer. Repeat.</span>
+            </div>
+            <div class="toolbar">
+                <div class="toolbar-buttons">
+                    <button type="button" class="btn" id="addTaskBtn">📝 <span><u>N</u>ew Task…</span></button>
+                    <button type="button" class="btn" id="alertsBtn" title="Jump to alerts">🔔 Alerts <span class="count-badge" id="unreadAlertBadge">0</span></button>
+                    <button type="button" class="btn" id="settingsBtn" title="Alert settings">⚙️ Settings</button>
+                </div>
+                <div class="hit-counter" id="streakBadge" title="Combined daily streak across all categories">
+                    <span class="hit-counter-label">STREAK</span>
+                    <span class="hit-counter-digits" id="streakCount">000</span>
+                    <span class="hit-counter-label">DAYS</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="layout">
+            <!-- LEFT COLUMN -->
+            <aside class="sidebar">
+                <!-- CALENDAR WINDOW -->
+                <section class="win" id="calendarWindow">
+                    <div class="title-bar">
+                        <span class="title-bar-text">📅 Calendar</span>
+                    </div>
+                    <div class="win-body">
+                        <div class="cal-nav">
+                            <button type="button" class="btn btn-small" id="calPrevMonth" aria-label="Previous month">◀</button>
+                            <span class="cal-month-title" id="calMonthTitle">Month</span>
+                            <button type="button" class="btn btn-small" id="calNextMonth" aria-label="Next month">▶</button>
+                        </div>
+                        <div class="cal-grid sunken" id="calGrid"></div>
+                        <div class="cal-legend">
+                            <span><i class="lg lg-tasks"></i> Has tasks</span>
+                            <span><i class="lg lg-overdue"></i> Overdue</span>
+                            <span><i class="lg lg-done"></i> All done</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ALERTS WINDOW -->
+                <section class="win" id="alertsPanel">
+                    <div class="title-bar">
+                        <span class="title-bar-text">🔔 Alerts</span>
+                        <span class="title-pill hidden" id="alertsUnreadPill">0 new</span>
+                    </div>
+                    <div class="win-body">
+                        <div class="button-row">
+                            <button type="button" class="btn btn-small" id="markAlertsReadBtn">Mark all read</button>
+                            <button type="button" class="btn btn-small" id="clearAlertsBtn">Clear</button>
+                        </div>
+                        <div class="alerts-list sunken" id="alertsList"></div>
+                    </div>
+                </section>
+            </aside>
+
+            <!-- RIGHT COLUMN -->
+            <main class="main-col" id="app-main">
+                <!-- DAY VIEW WINDOW -->
+                <section class="win" id="dayWindow">
+                    <div class="title-bar">
+                        <span class="title-bar-text">🗓️ Day View</span>
+                    </div>
+                    <div class="win-body">
+                        <div class="day-nav">
+                            <button type="button" class="btn btn-small" id="prevDayBtn" aria-label="Previous day">◀</button>
+                            <button type="button" class="btn btn-small" id="todayBtn">Today</button>
+                            <button type="button" class="btn btn-small" id="nextDayBtn" aria-label="Next day">▶</button>
+                            <h2 class="day-title" id="viewDayTitle">Today</h2>
+                        </div>
+
+                        <div class="stats-bar" id="statsBar">
+                            <div class="stat-box sunken">
+                                <div class="stat-value" id="totalTasks">0</div>
+                                <div class="stat-label">Tasks</div>
+                            </div>
+                            <div class="stat-box sunken">
+                                <div class="stat-value stat-green" id="completedTasks">0</div>
+                                <div class="stat-label">Done</div>
+                            </div>
+                            <div class="stat-box sunken">
+                                <div class="stat-value stat-blue" id="pendingTasks">0</div>
+                                <div class="stat-label">Left</div>
+                            </div>
+                            <div class="stat-box sunken" title="Unfinished tasks past their due time, on any day">
+                                <div class="stat-value stat-red" id="overdueTasks">0</div>
+                                <div class="stat-label">Overdue</div>
+                            </div>
+                        </div>
+
+                        <!-- QUICK ADD -->
+                        <form id="quickAddForm" class="quick-add group-box" autocomplete="off">
+                            <span class="group-box-label">Quick Add</span>
+                            <div class="quick-row">
+                                <input type="text" id="quickInput" class="field quick-input" placeholder="Type a task and press Enter… (e.g. Morning 5km run)" required autofocus>
+                                <button type="submit" class="btn btn-default">Add</button>
+                                <button type="button" class="btn" id="quickPickDaysBtn" title="Choose several days on a calendar">📅 Pick Days…</button>
+                            </div>
+                            <div class="quick-row quick-meta">
+                                <div class="quick-cats" role="group" aria-label="Category">
+                                    <button type="button" class="btn btn-small quick-cat-btn" data-cat="sports">🏃 Sports</button>
+                                    <button type="button" class="btn btn-small quick-cat-btn" data-cat="chores">🧹 Chores</button>
+                                    <button type="button" class="btn btn-small quick-cat-btn active" data-cat="productivity">⚡ Productivity</button>
+                                </div>
+                                <label class="inline-label">Time <input type="time" id="quickTime" class="field" value="18:00"></label>
+                                <label class="inline-label">Alert
+                                    <select id="quickReminderPreset" class="field">
+                                        <option value="15" selected>15 min before</option>
+                                        <option value="60">1 hour before</option>
+                                        <option value="180">3 hours before</option>
+                                        <option value="1440">1 day before</option>
+                                        <option value="0">At due time</option>
+                                        <option value="">No reminder</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="quick-target" id="quickAddTarget">Adds to today</div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- CATEGORY WINDOWS -->
+                <section class="win category-section cat-sports" id="section-sports" data-category="sports">
+                    <div class="title-bar">
+                        <span class="title-bar-text">🏃 Sports</span>
+                        <div class="title-bar-controls">
+                            <button type="button" class="btn-collapse" data-target="sports" aria-label="Minimize Sports" title="Minimize">_</button>
+                        </div>
+                    </div>
+                    <div class="win-body" id="sports-body">
+                        <div class="cat-header">
+                            <span class="cf-rank-badge rank-newbie" id="sports-rank">Newbie</span>
+                            <span class="task-count" id="sports-count">0 tasks</span>
+                        </div>
+                        <div class="cf-stats-strip">
+                            <div class="cf-stat sunken" title="Consecutive days with sports completed"><span class="cf-stat-title">Streak</span><span class="cf-stat-val" id="sports-current-streak">0 days</span></div>
+                            <div class="cf-stat sunken" title="Longest streak ever"><span class="cf-stat-title">Best</span><span class="cf-stat-val" id="sports-max-streak">0 days</span></div>
+                            <div class="cf-stat sunken" title="Days with sports completed in the last year"><span class="cf-stat-title">Active Days</span><span class="cf-stat-val" id="sports-active-days">0</span></div>
+                            <div class="cf-stat sunken" title="All-time sports tasks completed"><span class="cf-stat-title">Completed</span><span class="cf-stat-val" id="sports-total-done">0</span></div>
+                        </div>
+                        <div class="heatmap-box">
+                            <div class="heatmap-header">
+                                <span class="heatmap-subtitle" id="sports-heatmap-summary">0 tasks in the last year</span>
+                                <span class="heatmap-legend">Less <i class="hm-cell lvl-0"></i><i class="hm-cell lvl-1"></i><i class="hm-cell lvl-2"></i><i class="hm-cell lvl-3"></i><i class="hm-cell lvl-4"></i> More</span>
+                            </div>
+                            <div class="heatmap-scroll sunken"><div class="heatmap" id="sports-heatmap"></div></div>
+                        </div>
+                        <input type="text" class="field inline-add-input" id="inline-add-sports" placeholder="+ Quick add a Sports task for this day (press Enter)">
+                        <div class="task-list" id="sports-tasks"></div>
+                        <div class="empty-state" id="sports-empty">No sports tasks on this day.</div>
+                    </div>
+                </section>
+
+                <section class="win category-section cat-chores" id="section-chores" data-category="chores">
+                    <div class="title-bar">
+                        <span class="title-bar-text">🧹 Chores</span>
+                        <div class="title-bar-controls">
+                            <button type="button" class="btn-collapse" data-target="chores" aria-label="Minimize Chores" title="Minimize">_</button>
+                        </div>
+                    </div>
+                    <div class="win-body" id="chores-body">
+                        <div class="cat-header">
+                            <span class="cf-rank-badge rank-newbie" id="chores-rank">Newbie</span>
+                            <span class="task-count" id="chores-count">0 tasks</span>
+                        </div>
+                        <div class="cf-stats-strip">
+                            <div class="cf-stat sunken" title="Consecutive days with chores done"><span class="cf-stat-title">Streak</span><span class="cf-stat-val" id="chores-current-streak">0 days</span></div>
+                            <div class="cf-stat sunken" title="Longest streak ever"><span class="cf-stat-title">Best</span><span class="cf-stat-val" id="chores-max-streak">0 days</span></div>
+                            <div class="cf-stat sunken" title="Days with chores done in the last year"><span class="cf-stat-title">Active Days</span><span class="cf-stat-val" id="chores-active-days">0</span></div>
+                            <div class="cf-stat sunken" title="All-time chores completed"><span class="cf-stat-title">Completed</span><span class="cf-stat-val" id="chores-total-done">0</span></div>
+                        </div>
+                        <div class="heatmap-box">
+                            <div class="heatmap-header">
+                                <span class="heatmap-subtitle" id="chores-heatmap-summary">0 tasks in the last year</span>
+                                <span class="heatmap-legend">Less <i class="hm-cell lvl-0"></i><i class="hm-cell lvl-1"></i><i class="hm-cell lvl-2"></i><i class="hm-cell lvl-3"></i><i class="hm-cell lvl-4"></i> More</span>
+                            </div>
+                            <div class="heatmap-scroll sunken"><div class="heatmap" id="chores-heatmap"></div></div>
+                        </div>
+                        <input type="text" class="field inline-add-input" id="inline-add-chores" placeholder="+ Quick add a Chores task for this day (press Enter)">
+                        <div class="task-list" id="chores-tasks"></div>
+                        <div class="empty-state" id="chores-empty">No chores on this day.</div>
+                    </div>
+                </section>
+
+                <section class="win category-section cat-productivity" id="section-productivity" data-category="productivity">
+                    <div class="title-bar">
+                        <span class="title-bar-text">⚡ Productivity</span>
+                        <div class="title-bar-controls">
+                            <button type="button" class="btn-collapse" data-target="productivity" aria-label="Minimize Productivity" title="Minimize">_</button>
+                        </div>
+                    </div>
+                    <div class="win-body" id="productivity-body">
+                        <div class="cat-header">
+                            <span class="cf-rank-badge rank-newbie" id="productivity-rank">Newbie</span>
+                            <span class="task-count" id="productivity-count">0 tasks</span>
+                        </div>
+                        <div class="cf-stats-strip">
+                            <div class="cf-stat sunken" title="Consecutive days with productivity tasks done"><span class="cf-stat-title">Streak</span><span class="cf-stat-val" id="productivity-current-streak">0 days</span></div>
+                            <div class="cf-stat sunken" title="Longest streak ever"><span class="cf-stat-title">Best</span><span class="cf-stat-val" id="productivity-max-streak">0 days</span></div>
+                            <div class="cf-stat sunken" title="Days with productivity tasks done in the last year"><span class="cf-stat-title">Active Days</span><span class="cf-stat-val" id="productivity-active-days">0</span></div>
+                            <div class="cf-stat sunken" title="All-time productivity tasks completed"><span class="cf-stat-title">Completed</span><span class="cf-stat-val" id="productivity-total-done">0</span></div>
+                        </div>
+                        <div class="heatmap-box">
+                            <div class="heatmap-header">
+                                <span class="heatmap-subtitle" id="productivity-heatmap-summary">0 tasks in the last year</span>
+                                <span class="heatmap-legend">Less <i class="hm-cell lvl-0"></i><i class="hm-cell lvl-1"></i><i class="hm-cell lvl-2"></i><i class="hm-cell lvl-3"></i><i class="hm-cell lvl-4"></i> More</span>
+                            </div>
+                            <div class="heatmap-scroll sunken"><div class="heatmap" id="productivity-heatmap"></div></div>
+                        </div>
+                        <input type="text" class="field inline-add-input" id="inline-add-productivity" placeholder="+ Quick add a Productivity task for this day (press Enter)">
+                        <div class="task-list" id="productivity-tasks"></div>
+                        <div class="empty-state" id="productivity-empty">No productivity tasks on this day.</div>
+                    </div>
+                </section>
+
+                <p class="best-viewed">Best viewed in 800×600 with any browser · Made with Notepad</p>
+            </main>
+        </div>
     </div>
 
-    <!-- Header -->
-    <header id="app-header">
-        <div class="header-inner">
-            <div class="logo-group">
-                <div class="logo-icon" aria-hidden="true">
-                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                        <rect x="2" y="2" width="10" height="10" rx="3" fill="url(#g1)" opacity="0.95"/>
-                        <rect x="16" y="2" width="10" height="10" rx="3" fill="url(#g2)" opacity="0.85"/>
-                        <rect x="2" y="16" width="10" height="10" rx="3" fill="url(#g3)" opacity="0.75"/>
-                        <rect x="16" y="16" width="10" height="10" rx="3" fill="url(#g1)" opacity="0.5"/>
-                        <defs>
-                            <linearGradient id="g1" x1="0" y1="0" x2="12" y2="12"><stop stop-color="#6C5CE7"/><stop offset="1" stop-color="#a29bfe"/></linearGradient>
-                            <linearGradient id="g2" x1="0" y1="0" x2="12" y2="12"><stop stop-color="#00cec9"/><stop offset="1" stop-color="#81ecec"/></linearGradient>
-                            <linearGradient id="g3" x1="0" y1="0" x2="12" y2="12"><stop stop-color="#fdcb6e"/><stop offset="1" stop-color="#ffeaa7"/></linearGradient>
-                        </defs>
-                    </svg>
-                </div>
-                <div>
-                    <h1 class="logo-text">TaskForge</h1>
-                    <span class="logo-subtext">Codeforces Edition</span>
-                </div>
-            </div>
-
-            <div class="header-actions">
-                <!-- Streak Badge -->
-                <div class="streak-badge" id="streakBadge" title="Combined daily streak across all categories">
-                    <span class="fire-icon">🔥</span>
-                    <span id="streakCount">0</span> day streak
-                </div>
-
-
-                <!-- Current Room -->
-                <div class="user-profile-chip hidden" id="roomChip" title="You're in a passcode room">
-                    <div class="user-avatar">🔑</div>
-                    <span class="user-email-text">Room</span>
-                    <button class="btn-signout" id="leaveRoomBtn" title="Leave Room" aria-label="Leave Room">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    </button>
-                </div>
-
-                <!-- Alerts Bell -->
-                <button class="btn-icon" id="alertsBtn" title="Jump to alerts" aria-label="Alerts">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                    <span class="notification-badge" id="unreadAlertBadge">0</span>
-                </button>
-
-                <!-- Alert Settings -->
-                <button class="btn-icon" id="settingsBtn" title="Alert Settings" aria-label="Settings">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 13a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.5"/><path d="M17.4 10c0-.6-.4-1.1-1-1.2l-1-.2a6.5 6.5 0 00-.6-1.4l.6-.9c.3-.5.2-1.1-.2-1.5l-.1-.1c-.4-.4-1-.5-1.5-.2l-.9.6a6.5 6.5 0 00-1.4-.6l-.2-1c-.1-.6-.6-1-1.2-1h-.1c-.6 0-1.1.4-1.2 1l-.2 1a6.5 6.5 0 00-1.4.6l-.9-.6c-.5-.3-1.1-.2-1.5.2l-.1.1c-.4.4-.5 1-.2 1.5l.6.9a6.5 6.5 0 00-.6 1.4l-1 .2c-.6.1-1 .6-1 1.2v.1c0 .6.4 1.1 1 1.2l1 .2a6.5 6.5 0 00.6 1.4l-.6.9c-.3.5-.2 1.1.2 1.5l.1.1c.4.4 1 .5 1.5.2l.9-.6a6.5 6.5 0 001.4.6l.2 1c.1.6.6 1 1.2 1h.1c.6 0 1.1-.4 1.2-1l.2-1a6.5 6.5 0 001.4-.6l.9.6c.5.3 1.1.2 1.5-.2l.1-.1c.4-.4.5-1 .2-1.5l-.6-.9a6.5 6.5 0 00.6-1.4l1-.2c.6-.1 1-.6 1-1.2V10z" stroke="currentColor" stroke-width="1.5"/></svg>
-                </button>
-
-                <!-- Detailed Task Modal Button -->
-                <button class="btn-primary" id="addTaskBtn">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><line x1="9" y1="3" x2="9" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="9" x2="15" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                    <span>Detailed Task</span>
-                </button>
-            </div>
+    <!-- TASKBAR -->
+    <footer class="taskbar">
+        <span class="taskbar-start">⚡ <b>TaskForge</b></span>
+        <div class="taskbar-ticker sunken" aria-hidden="true">
+            <span>★ Welcome to TaskForge 98! ★ Click a day on the calendar to see its tasks ★ Use 📅 Pick Days… to repeat a task on any days you like ★ Tick tasks off to grow your heatmap ★</span>
         </div>
-    </header>
-
-    <!-- Main Content -->
-    <main id="app-main">
-        <!-- Live Alert Banner (pops down when an alert fires) -->
-        <div class="alert-banner" id="alertBanner">
-            <div class="alert-banner-icon" id="alertBannerIcon">🔔</div>
-            <div class="alert-banner-content">
-                <div class="alert-banner-title" id="alertBannerTitle">Alert</div>
-                <div class="alert-banner-body" id="alertBannerBody"></div>
-            </div>
-            <div class="alert-banner-actions">
-                <button class="btn-banner-view" id="alertBannerViewBtn">View</button>
-                <button class="btn-banner-close" id="alertBannerCloseBtn" aria-label="Close alert">&times;</button>
-            </div>
+        <div class="taskbar-tray sunken">
+            <span class="hidden" id="roomChip">🔑 Room <button type="button" class="tray-btn" id="leaveRoomBtn" title="Leave room" aria-label="Leave room">⏏</button></span>
+            <span id="taskbarClock">12:00</span>
         </div>
+    </footer>
 
-        <!-- Global Stats Bar -->
-        <section class="stats-bar" id="statsBar">
-            <div class="stat-card">
-                <div class="stat-value" id="totalTasks">0</div>
-                <div class="stat-label">Total Tasks</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value text-accent-green" id="completedTasks">0</div>
-                <div class="stat-label">Completed</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value text-accent-cyan" id="pendingTasks">0</div>
-                <div class="stat-label">Pending</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value text-accent-coral" id="overdueTasks">0</div>
-                <div class="stat-label">Overdue</div>
-            </div>
-        </section>
+    <!-- ALERT BALLOON (pops up when an alert fires) -->
+    <div class="alert-banner" id="alertBanner" role="status">
+        <div class="alert-banner-head">
+            <span class="alert-banner-icon" id="alertBannerIcon">🔔</span>
+            <span class="alert-banner-title" id="alertBannerTitle">Alert</span>
+            <button type="button" class="btn-banner-close" id="alertBannerCloseBtn" aria-label="Close alert">×</button>
+        </div>
+        <div class="alert-banner-body" id="alertBannerBody"></div>
+        <button type="button" class="btn btn-small" id="alertBannerViewBtn">View alerts</button>
+    </div>
 
-        <!-- DASHBOARD ALERTS PANEL -->
-        <section class="alerts-panel" id="alertsPanel">
-            <div class="alerts-panel-header">
-                <div class="alerts-panel-title">
-                    <span class="alerts-panel-icon">🔔</span>
-                    <h2>Alerts</h2>
-                    <span class="alerts-unread-pill hidden" id="alertsUnreadPill">0 new</span>
-                </div>
-                <div class="alerts-panel-actions">
-                    <button type="button" class="btn-ghost" id="markAlertsReadBtn">Mark all read</button>
-                    <button type="button" class="btn-ghost" id="clearAlertsBtn">Clear</button>
-                </div>
-            </div>
-            <div class="alerts-list" id="alertsList">
-                <!-- Populated dynamically -->
-            </div>
-        </section>
-
-        <!-- INSTANT QUICK-ADD BAR ("i type something and its a task") -->
-        <section class="quick-add-container" id="quickAddSection">
-            <form id="quickAddForm" class="quick-add-form" autocomplete="off">
-                <div class="quick-add-main-row">
-                    <div class="quick-input-wrapper">
-                        <span class="quick-input-icon">⚡</span>
-                        <input 
-                            type="text" 
-                            id="quickInput" 
-                            class="quick-input" 
-                            placeholder="Type a task and hit Enter... (e.g. 'Morning 5km Run', 'Clean room', 'Solve Codeforces Round #940')" 
-                            required 
-                            autofocus
-                        />
-                    </div>
-                    <button type="submit" class="quick-submit-btn">
-                        <span>Add Task</span>
-                        <kbd>↵</kbd>
-                    </button>
-                </div>
-
-                <div class="quick-add-meta-row">
-                    <!-- Quick Category Pills -->
-                    <div class="quick-category-pills">
-                        <span class="quick-pill-label">Category:</span>
-                        <button type="button" class="quick-cat-btn sports-btn" data-cat="sports">
-                            <span class="cat-dot sports"></span> Sports
-                        </button>
-                        <button type="button" class="quick-cat-btn chores-btn" data-cat="chores">
-                            <span class="cat-dot chores"></span> Chores
-                        </button>
-                        <button type="button" class="quick-cat-btn prod-btn active" data-cat="productivity">
-                            <span class="cat-dot productivity"></span> Productivity
-                        </button>
-                    </div>
-
-                    <!-- Quick Timing & Notification Selectors -->
-                    <div class="quick-timing-selectors">
-                        <div class="quick-select-group">
-                            <label for="quickDeadlinePreset">Deadline:</label>
-                            <select id="quickDeadlinePreset" class="quick-select">
-                                <option value="today-eod">Today (11:59 PM)</option>
-                                <option value="tomorrow-9am">Tomorrow (9:00 AM)</option>
-                                <option value="tomorrow-eod" selected>Tomorrow (11:59 PM)</option>
-                                <option value="in-1-hour">In 1 Hour</option>
-                                <option value="in-2-hours">In 2 Hours</option>
-                                <option value="in-3-days">In 3 Days</option>
-                                <option value="custom">Custom Time...</option>
-                            </select>
-                            <input type="datetime-local" id="quickCustomDeadline" class="quick-custom-time hidden" />
-                        </div>
-
-                        <div class="quick-select-group">
-                            <label for="quickReminderPreset">Alert:</label>
-                            <select id="quickReminderPreset" class="quick-select">
-                                <option value="15m" selected>15 min before</option>
-                                <option value="1h">1 hour before</option>
-                                <option value="3h">3 hours before</option>
-                                <option value="1d">1 day before</option>
-                                <option value="at-deadline">At deadline</option>
-                                <option value="none">No reminder</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </section>
-
-        <!-- SECTION 1: SPORTS -->
-        <section class="category-section" id="section-sports" data-category="sports">
-            <div class="section-header">
-                <div class="section-title-group">
-                    <div class="section-icon sports-icon">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 3C12 3 8 8 8 12s4 9 4 9" stroke="currentColor" stroke-width="1.5"/><path d="M12 3c0 0 4 5 4 9s-4 9-4 9" stroke="currentColor" stroke-width="1.5"/><line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>
-                    </div>
-                    <div>
-                        <div class="title-with-badge">
-                            <h2>Sports</h2>
-                            <span class="cf-rank-badge rank-cyan" id="sports-rank">Specialist</span>
-                        </div>
-                        <span class="task-count" id="sports-count">0 tasks</span>
-                    </div>
-                </div>
-
-                <!-- Codeforces Style Stat Pills -->
-                <div class="cf-stats-strip">
-                    <div class="cf-stat-pill" title="Current consecutive active days in Sports">
-                        <span class="cf-stat-title">Current Streak</span>
-                        <span class="cf-stat-val text-sports" id="sports-current-streak">0 days</span>
-                    </div>
-                    <div class="cf-stat-pill" title="Longest consecutive active streak in Sports">
-                        <span class="cf-stat-title">Max Streak</span>
-                        <span class="cf-stat-val" id="sports-max-streak">0 days</span>
-                    </div>
-                    <div class="cf-stat-pill" title="Total active days with sports completed in the last year">
-                        <span class="cf-stat-title">Active Days</span>
-                        <span class="cf-stat-val" id="sports-active-days">0</span>
-                    </div>
-                    <div class="cf-stat-pill" title="All-time sports tasks completed">
-                        <span class="cf-stat-title">Completed</span>
-                        <span class="cf-stat-val" id="sports-total-done">0</span>
-                    </div>
-                    <button class="btn-collapse" data-target="sports" aria-label="Toggle section">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </button>
-                </div>
-            </div>
-
-            <div class="section-body" id="sports-body">
-                <!-- Codeforces Heatmap -->
-                <div class="heatmap-container">
-                    <div class="heatmap-header">
-                        <div class="heatmap-title-wrap">
-                            <span class="heatmap-badge">Codeforces Activity</span>
-                            <span class="heatmap-subtitle" id="sports-heatmap-summary">0 submissions in the last year</span>
-                        </div>
-                        <div class="heatmap-legend">
-                            <span class="legend-label">Less</span>
-                            <div class="legend-cell" style="background: var(--heatmap-0)"></div>
-                            <div class="legend-cell" style="background: var(--sports-1)"></div>
-                            <div class="legend-cell" style="background: var(--sports-2)"></div>
-                            <div class="legend-cell" style="background: var(--sports-3)"></div>
-                            <div class="legend-cell" style="background: var(--sports-4)"></div>
-                            <span class="legend-label">More</span>
-                        </div>
-                    </div>
-
-                    <div class="heatmap-wrapper">
-                        <div class="heatmap-months" id="sports-months"></div>
-                        <div class="heatmap-grid-wrapper">
-                            <div class="heatmap-days">
-                                <span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span><span>Sun</span>
-                            </div>
-                            <div class="heatmap-grid" id="sports-heatmap"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section Inline Quick Add -->
-                <div class="section-inline-add">
-                    <input type="text" class="inline-add-input" id="inline-add-sports" placeholder="+ Quick add Sports task... (Press Enter)" />
-                </div>
-
-                <!-- Task List -->
-                <div class="task-list" id="sports-tasks"></div>
-                <div class="empty-state" id="sports-empty">
-                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                    <p>No sports tasks yet. Type above to add your first workout!</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- SECTION 2: CHORES -->
-        <section class="category-section" id="section-chores" data-category="chores">
-            <div class="section-header">
-                <div class="section-title-group">
-                    <div class="section-icon chores-icon">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2"/><path d="M9 22V12h6v10" stroke="currentColor" stroke-width="2"/></svg>
-                    </div>
-                    <div>
-                        <div class="title-with-badge">
-                            <h2>Chores</h2>
-                            <span class="cf-rank-badge rank-gold" id="chores-rank">Candidate Master</span>
-                        </div>
-                        <span class="task-count" id="chores-count">0 tasks</span>
-                    </div>
-                </div>
-
-                <!-- Codeforces Style Stat Pills -->
-                <div class="cf-stats-strip">
-                    <div class="cf-stat-pill" title="Current consecutive active days in Chores">
-                        <span class="cf-stat-title">Current Streak</span>
-                        <span class="cf-stat-val text-chores" id="chores-current-streak">0 days</span>
-                    </div>
-                    <div class="cf-stat-pill" title="Longest consecutive active streak in Chores">
-                        <span class="cf-stat-title">Max Streak</span>
-                        <span class="cf-stat-val" id="chores-max-streak">0 days</span>
-                    </div>
-                    <div class="cf-stat-pill" title="Total active days with chores done in the last year">
-                        <span class="cf-stat-title">Active Days</span>
-                        <span class="cf-stat-val" id="chores-active-days">0</span>
-                    </div>
-                    <div class="cf-stat-pill" title="All-time chores completed">
-                        <span class="cf-stat-title">Completed</span>
-                        <span class="cf-stat-val" id="chores-total-done">0</span>
-                    </div>
-                    <button class="btn-collapse" data-target="chores" aria-label="Toggle section">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </button>
-                </div>
-            </div>
-
-            <div class="section-body" id="chores-body">
-                <!-- Codeforces Heatmap -->
-                <div class="heatmap-container">
-                    <div class="heatmap-header">
-                        <div class="heatmap-title-wrap">
-                            <span class="heatmap-badge">Codeforces Activity</span>
-                            <span class="heatmap-subtitle" id="chores-heatmap-summary">0 submissions in the last year</span>
-                        </div>
-                        <div class="heatmap-legend">
-                            <span class="legend-label">Less</span>
-                            <div class="legend-cell" style="background: var(--heatmap-0)"></div>
-                            <div class="legend-cell" style="background: var(--chores-1)"></div>
-                            <div class="legend-cell" style="background: var(--chores-2)"></div>
-                            <div class="legend-cell" style="background: var(--chores-3)"></div>
-                            <div class="legend-cell" style="background: var(--chores-4)"></div>
-                            <span class="legend-label">More</span>
-                        </div>
-                    </div>
-
-                    <div class="heatmap-wrapper">
-                        <div class="heatmap-months" id="chores-months"></div>
-                        <div class="heatmap-grid-wrapper">
-                            <div class="heatmap-days">
-                                <span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span><span>Sun</span>
-                            </div>
-                            <div class="heatmap-grid" id="chores-heatmap"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section Inline Quick Add -->
-                <div class="section-inline-add">
-                    <input type="text" class="inline-add-input" id="inline-add-chores" placeholder="+ Quick add Chores task... (Press Enter)" />
-                </div>
-
-                <!-- Task List -->
-                <div class="task-list" id="chores-tasks"></div>
-                <div class="empty-state" id="chores-empty">
-                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
-                    <p>No chores pending. Type above to add your first chore!</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- SECTION 3: PRODUCTIVITY -->
-        <section class="category-section" id="section-productivity" data-category="productivity">
-            <div class="section-header">
-                <div class="section-title-group">
-                    <div class="section-icon productivity-icon">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                    </div>
-                    <div>
-                        <div class="title-with-badge">
-                            <h2>Productivity</h2>
-                            <span class="cf-rank-badge rank-grandmaster" id="productivity-rank">Grandmaster</span>
-                        </div>
-                        <span class="task-count" id="productivity-count">0 tasks</span>
-                    </div>
-                </div>
-
-                <!-- Codeforces Style Stat Pills -->
-                <div class="cf-stats-strip">
-                    <div class="cf-stat-pill" title="Current consecutive active days in Productivity">
-                        <span class="cf-stat-title">Current Streak</span>
-                        <span class="cf-stat-val text-prod" id="productivity-current-streak">0 days</span>
-                    </div>
-                    <div class="cf-stat-pill" title="Longest consecutive active streak in Productivity">
-                        <span class="cf-stat-title">Max Streak</span>
-                        <span class="cf-stat-val" id="productivity-max-streak">0 days</span>
-                    </div>
-                    <div class="cf-stat-pill" title="Total active days with productivity tasks done in the last year">
-                        <span class="cf-stat-title">Active Days</span>
-                        <span class="cf-stat-val" id="productivity-active-days">0</span>
-                    </div>
-                    <div class="cf-stat-pill" title="All-time productivity tasks completed">
-                        <span class="cf-stat-title">Completed</span>
-                        <span class="cf-stat-val" id="productivity-total-done">0</span>
-                    </div>
-                    <button class="btn-collapse" data-target="productivity" aria-label="Toggle section">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 8l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </button>
-                </div>
-            </div>
-
-            <div class="section-body" id="productivity-body">
-                <!-- Codeforces Heatmap -->
-                <div class="heatmap-container">
-                    <div class="heatmap-header">
-                        <div class="heatmap-title-wrap">
-                            <span class="heatmap-badge">Codeforces Activity</span>
-                            <span class="heatmap-subtitle" id="productivity-heatmap-summary">0 submissions in the last year</span>
-                        </div>
-                        <div class="heatmap-legend">
-                            <span class="legend-label">Less</span>
-                            <div class="legend-cell" style="background: var(--heatmap-0)"></div>
-                            <div class="legend-cell" style="background: var(--prod-1)"></div>
-                            <div class="legend-cell" style="background: var(--prod-2)"></div>
-                            <div class="legend-cell" style="background: var(--prod-3)"></div>
-                            <div class="legend-cell" style="background: var(--prod-4)"></div>
-                            <span class="legend-label">More</span>
-                        </div>
-                    </div>
-
-                    <div class="heatmap-wrapper">
-                        <div class="heatmap-months" id="productivity-months"></div>
-                        <div class="heatmap-grid-wrapper">
-                            <div class="heatmap-days">
-                                <span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span><span>Sun</span>
-                            </div>
-                            <div class="heatmap-grid" id="productivity-heatmap"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section Inline Quick Add -->
-                <div class="section-inline-add">
-                    <input type="text" class="inline-add-input" id="inline-add-productivity" placeholder="+ Quick add Productivity task... (Press Enter)" />
-                </div>
-
-                <!-- Task List -->
-                <div class="task-list" id="productivity-tasks"></div>
-                <div class="empty-state" id="productivity-empty">
-                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                    <p>No productivity tasks yet. Type above to crush your goals!</p>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- DETAILED ADD TASK MODAL -->
+    <!-- NEW TASK DIALOG -->
     <div class="modal-overlay" id="taskModal">
-        <div class="modal" role="dialog" aria-labelledby="modalTitle">
-            <div class="modal-header">
-                <div class="modal-title-wrap">
-                    <div class="modal-icon">📝</div>
-                    <h2 id="modalTitle">Create Detailed Task</h2>
+        <div class="win modal" role="dialog" aria-labelledby="modalTitle">
+            <div class="title-bar">
+                <span class="title-bar-text" id="modalTitle">📝 New Task</span>
+                <div class="title-bar-controls">
+                    <button type="button" class="title-btn" id="modalClose" aria-label="Close">×</button>
                 </div>
-                <button class="btn-icon modal-close" id="modalClose" aria-label="Close modal">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><line x1="5" y1="5" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="5" x2="5" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                </button>
             </div>
-            <form id="taskForm" class="modal-body">
+            <form id="taskForm" class="win-body modal-body">
                 <div class="form-group">
-                    <label for="taskTitle">Task Title *</label>
-                    <input type="text" id="taskTitle" placeholder="What do you need to accomplish?" required autofocus>
+                    <label for="taskTitle">Task title:</label>
+                    <input type="text" id="taskTitle" class="field" placeholder="What do you need to do?" required>
                 </div>
                 <div class="form-group">
-                    <label for="taskDescription">Description / Notes</label>
-                    <textarea id="taskDescription" placeholder="Add specific subtasks, links, or execution steps..." rows="3"></textarea>
+                    <label for="taskDescription">Notes:</label>
+                    <textarea id="taskDescription" class="field" placeholder="Optional details…" rows="2"></textarea>
                 </div>
-                <div class="form-group">
-                    <label>Category</label>
-                    <div class="category-selector">
-                        <label class="category-option sports-opt">
-                            <input type="radio" name="category" value="sports" id="catSports">
-                            <span class="category-chip">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/></svg>
-                                Sports
-                            </span>
-                        </label>
-                        <label class="category-option chores-opt">
-                            <input type="radio" name="category" value="chores" id="catChores">
-                            <span class="category-chip">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2"/></svg>
-                                Chores
-                            </span>
-                        </label>
-                        <label class="category-option productivity-opt">
-                            <input type="radio" name="category" value="productivity" id="catProductivity" checked>
-                            <span class="category-chip">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                                Productivity
-                            </span>
-                        </label>
+
+                <fieldset class="group-box">
+                    <legend>Category</legend>
+                    <div class="radio-row">
+                        <label class="radio"><input type="radio" name="category" value="sports"> 🏃 Sports</label>
+                        <label class="radio"><input type="radio" name="category" value="chores"> 🧹 Chores</label>
+                        <label class="radio"><input type="radio" name="category" value="productivity" checked> ⚡ Productivity</label>
                     </div>
-                </div>
+                </fieldset>
+
+                <fieldset class="group-box">
+                    <legend>Show this task on these days</legend>
+                    <div class="cal-nav">
+                        <button type="button" class="btn btn-small" id="pickerPrev" aria-label="Previous month">◀</button>
+                        <span class="cal-month-title" id="pickerMonthTitle">Month</span>
+                        <button type="button" class="btn btn-small" id="pickerNext" aria-label="Next month">▶</button>
+                    </div>
+                    <div class="cal-grid picker sunken" id="pickerGrid"></div>
+                    <div class="button-row picker-shortcuts">
+                        <button type="button" class="btn btn-small" id="pickToday">Today</button>
+                        <button type="button" class="btn btn-small" id="pickWeek">Next 7 days</button>
+                        <button type="button" class="btn btn-small" id="pickWeekdays">Weekdays (2 wks)</button>
+                        <button type="button" class="btn btn-small" id="pickClear">Clear</button>
+                    </div>
+                    <div class="picker-summary" id="pickerSummary">No days selected</div>
+                </fieldset>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="taskDeadline">Deadline *</label>
-                        <input type="datetime-local" id="taskDeadline" required>
+                        <label for="taskTime">Due time (each day):</label>
+                        <input type="time" id="taskTime" class="field" value="18:00" required>
                     </div>
                     <div class="form-group">
-                        <label for="taskReminder">Reminder Time</label>
-                        <input type="datetime-local" id="taskReminder">
+                        <label for="taskReminder">Reminder:</label>
+                        <select id="taskReminder" class="field">
+                            <option value="15">15 min before</option>
+                            <option value="60" selected>1 hour before</option>
+                            <option value="180">3 hours before</option>
+                            <option value="1440">1 day before</option>
+                            <option value="0">At due time</option>
+                            <option value="">No reminder</option>
+                        </select>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Priority</label>
-                    <div class="priority-selector">
-                        <label class="priority-option">
-                            <input type="radio" name="priority" value="low" checked>
-                            <span class="priority-chip low">Low</span>
-                        </label>
-                        <label class="priority-option">
-                            <input type="radio" name="priority" value="medium">
-                            <span class="priority-chip medium">Medium</span>
-                        </label>
-                        <label class="priority-option">
-                            <input type="radio" name="priority" value="high">
-                            <span class="priority-chip high">High (Urgent)</span>
-                        </label>
+                <fieldset class="group-box">
+                    <legend>Priority</legend>
+                    <div class="radio-row">
+                        <label class="radio"><input type="radio" name="priority" value="low"> Low</label>
+                        <label class="radio"><input type="radio" name="priority" value="medium" checked> Medium</label>
+                        <label class="radio"><input type="radio" name="priority" value="high"> High</label>
                     </div>
-                </div>
+                </fieldset>
 
-                <div class="form-group checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="taskAlertsOn" checked>
-                        <span class="checkmark"></span>
-                        Show dashboard alerts (at reminder time &amp; when deadline reaches)
-                    </label>
-                </div>
+                <label class="checkbox"><input type="checkbox" id="taskAlertsOn" checked> Show alerts for this task</label>
+
+                <div class="error-box hidden" id="taskFormError" role="alert"></div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn-secondary" id="modalCancel">Cancel</button>
-                    <button type="submit" class="btn-primary">Create Task</button>
+                    <button type="submit" class="btn btn-default">Create Task</button>
+                    <button type="button" class="btn" id="modalCancel">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- SETTINGS MODAL -->
+    <!-- SETTINGS DIALOG -->
     <div class="modal-overlay" id="settingsModal">
-        <div class="modal" role="dialog" aria-labelledby="settingsTitle">
-            <div class="modal-header">
-                <div class="modal-title-wrap">
-                    <div class="modal-icon">⚙️</div>
-                    <h2 id="settingsTitle">Alert Settings</h2>
+        <div class="win modal modal-sm" role="dialog" aria-labelledby="settingsTitle">
+            <div class="title-bar">
+                <span class="title-bar-text" id="settingsTitle">⚙️ Alert Settings</span>
+                <div class="title-bar-controls">
+                    <button type="button" class="title-btn" id="settingsClose" aria-label="Close">×</button>
                 </div>
-                <button class="btn-icon modal-close" id="settingsClose" aria-label="Close settings">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><line x1="5" y1="5" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="5" x2="5" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                </button>
             </div>
-            <div class="modal-body">
-                <div class="settings-info">
-                    <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#6C5CE7" stroke-width="1.5"/><path d="M10 6v5M10 13v1" stroke="#6C5CE7" stroke-width="2" stroke-linecap="round"/></svg>
-                    <p>Alerts appear in the <strong>Alerts</strong> panel on your dashboard, with a pop-up banner, an optional chime and a desktop notification (if your browser allows it).</p>
-                </div>
+            <div class="win-body modal-body">
+                <p class="info-text">Alerts appear in the <b>Alerts</b> window, as a pop-up balloon, with an optional chime, and as a desktop notification if your browser allows it.</p>
 
-                <div class="form-group checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="soundChimeToggle" checked>
-                        <span class="checkmark"></span>
-                        Play a chime when an alert fires
-                    </label>
-                </div>
+                <fieldset class="group-box">
+                    <legend>Alerts</legend>
+                    <label class="checkbox"><input type="checkbox" id="soundChimeToggle" checked> Play a chime when an alert fires</label>
+                    <label class="checkbox"><input type="checkbox" id="reminderAlertsToggle" checked> Reminder alerts (before a task is due)</label>
+                    <label class="checkbox"><input type="checkbox" id="deadlineAlertsToggle" checked> Deadline alerts (when a task is due)</label>
+                    <div class="form-group">
+                        <label for="overdueFollowUp">Overdue follow-ups:</label>
+                        <select id="overdueFollowUp" class="field">
+                            <option value="0">Off</option>
+                            <option value="1">Every hour (max 3)</option>
+                            <option value="3">Every 3 hours (max 3)</option>
+                            <option value="6">Every 6 hours (max 3)</option>
+                            <option value="24">Every day (max 3)</option>
+                        </select>
+                    </div>
+                </fieldset>
 
-                <div class="form-group checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="reminderAlertsToggle" checked>
-                        <span class="checkmark"></span>
-                        Reminder alerts (at each task's reminder time)
-                    </label>
-                </div>
-
-                <div class="form-group checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="deadlineAlertsToggle" checked>
-                        <span class="checkmark"></span>
-                        Deadline alerts (when a task's deadline is reached)
-                    </label>
-                </div>
-
-                <div class="form-group">
-                    <label for="overdueFollowUp">Overdue Follow-ups</label>
-                    <select id="overdueFollowUp">
-                        <option value="0">Off</option>
-                        <option value="1">Every hour (max 3)</option>
-                        <option value="3">Every 3 hours (max 3)</option>
-                        <option value="6">Every 6 hours (max 3)</option>
-                        <option value="24">Every day (max 3)</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <button type="button" class="btn-ghost" id="testAlertBtn">🔔 Show Test Alert</button>
-                </div>
+                <button type="button" class="btn" id="testAlertBtn">🔔 Show Test Alert</button>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn-secondary" id="settingsCancelBtn">Cancel</button>
-                    <button type="button" class="btn-primary" id="saveSettingsBtn">Save Settings</button>
+                    <button type="button" class="btn btn-default" id="saveSettingsBtn">OK</button>
+                    <button type="button" class="btn" id="settingsCancelBtn">Cancel</button>
                 </div>
             </div>
         </div>
@@ -612,28 +383,30 @@
 
     <!-- ROOM GATE (PASSCODE ACCESS) -->
     <div class="modal-overlay" id="roomModal">
-        <div class="modal auth-modal-box" role="dialog" aria-labelledby="roomTitle">
-            <div class="modal-header auth-modal-header">
-                <div class="modal-title-wrap">
-                    <div class="modal-icon">🔑</div>
-                    <h2 id="roomTitle">Enter Your TaskForge Room</h2>
-                </div>
+        <div class="win modal modal-sm" role="dialog" aria-labelledby="roomTitle">
+            <div class="title-bar">
+                <span class="title-bar-text" id="roomTitle">🔑 Welcome to TaskForge</span>
             </div>
-            <div class="modal-body auth-modal-body">
-                <p class="room-hint" id="roomHint">Enter your room passcode. Using a new passcode creates a new room.</p>
+            <div class="win-body modal-body">
+                <div class="room-intro">
+                    <div class="room-icon" aria-hidden="true">🔑</div>
+                    <p class="room-hint" id="roomHint">Enter your room passcode. Using a new passcode creates a new room.</p>
+                </div>
 
                 <form id="roomForm" autocomplete="off">
                     <div class="form-group">
-                        <label for="roomPasscode">Room Passcode *</label>
-                        <input type="password" id="roomPasscode" placeholder="At least 4 characters" required minlength="4" autocomplete="off">
+                        <label for="roomPasscode">Passcode:</label>
+                        <input type="password" id="roomPasscode" class="field" placeholder="At least 4 characters" required minlength="4" autocomplete="off">
                     </div>
 
-                    <div class="auth-error-msg hidden" id="roomErrorMsg"></div>
+                    <div class="error-box hidden" id="roomErrorMsg" role="alert"></div>
 
-                    <button type="submit" class="btn-primary auth-submit-btn" id="roomSubmitBtn">Enter Room</button>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-default" id="roomSubmitBtn">Enter Room</button>
+                    </div>
                 </form>
 
-                <p class="room-footnote">Rooms are saved in this browser. Use the same passcode here to come back to your tasks.</p>
+                <p class="room-footnote">Rooms are saved in this browser. Use the same passcode to come back to your tasks.</p>
             </div>
         </div>
     </div>
@@ -641,7 +414,6 @@
     <!-- Toast Notification Container -->
     <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
-    <!-- Scripts -->
     <script src="app.js"></script>
 </body>
 </html>
