@@ -9,6 +9,8 @@
 ## 🌟 Highlights
 
 - **Retro 90s Look (light mode)**: Beveled grey windows, navy title bars, a taskbar with a clock and scrolling ticker, pixel-font counters, and yellow system-tray alert balloons.
+- **Retro Sounds**: Synthesized in the browser (no audio files) — keyboard clacks as you type (with distinct Backspace and Enter sounds), mechanical button clicks, checkbox blips, a jingle when you finish a task, dialog open/close tones, an error chord, and a startup tune. Toggle them with **🔊 Sound** in the toolbar, or in **⚙️ Settings** (click & typing sounds, alert chime, volume).
+- **Mobile Friendly**: Finger-sized controls, no zoom-on-focus on iPhone, a bottom bar with ◀ day ▶, ＋ new task and 🔔 alerts, full-screen dialogs with buttons always in reach, collapsible windows, and support for the iPhone home-bar area.
 - **Pick Your Days**: In **📝 New Task…** (or **📅 Pick Days…** from Quick Add), click any days on a month calendar — or use *Today*, *Next 7 days*, *Weekdays (2 wks)* — and the task shows up on each of them at its due time. Each day is ticked off separately.
 - **Calendar + Day View**: A calendar window marks days with tasks (blue), overdue work (red), and all-done days (green). Click a day, or use ◀ Today ▶, to see that day's tasks and stats.
 - **Instant "Type & Enter" Task Creation**: Quick Add and the per-category inputs add a task to the day you're viewing.

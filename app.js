@@ -127,6 +127,9 @@ function saveData(data) {
 
 const DEFAULT_SETTINGS = {
     soundChime: true,
+    uiSounds: true,            // retro click & typing sounds
+    soundVolume: 60,           // 0–100
+    muted: false,              // master switch from the toolbar
     reminderAlerts: true,
     deadlineAlerts: true,
     overdueFollowUpHours: 0    // 0 = off
@@ -255,37 +258,165 @@ function overdueOccurrences(now = new Date()) {
 }
 
 // ============================================================
-//  AUDIO CHIME (8-BIT WEB AUDIO SYNTH)
+//  RETRO SOUND ENGINE (WEB AUDIO SYNTH — NO AUDIO FILES)
 // ============================================================
-let audioCtx = null;
+const Sfx = (() => {
+    let ctx = null;
+    let master = null;
+    let noise = null;
+    const lastPlayed = {};
 
-function playNotificationChime(type = 'reminder') {
-    if (!appSettings.soundChime) return;
-
-    try {
+    // Browsers only allow audio after a user gesture, so this is first
+    // called from a pointer/key handler
+    function ensureContext() {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        // Reuse one context; browsers cap how many can exist
-        audioCtx = audioCtx || new AudioContext();
-        const ctx = audioCtx;
-
-        const notes = type === 'reminder' ? [880, 1318.5] : [1046.5, 783.99, 1046.5];
-        const now = ctx.currentTime;
-        notes.forEach((freq, i) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(freq, now + i * 0.12);
-            gain.gain.setValueAtTime(0.06, now + i * 0.12);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.11);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(now + i * 0.12);
-            osc.stop(now + i * 0.12 + 0.12);
-        });
-    } catch (e) {
-        // AudioContext may be locked until user interaction
+        if (!AudioContext) return false;
+        if (!ctx) {
+            ctx = new AudioContext();
+            master = ctx.createGain();
+            master.connect(ctx.destination);
+            noise = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.25), ctx.sampleRate);
+            const data = noise.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        }
+        if (ctx.state === 'suspended') ctx.resume();
+        return true;
     }
+
+    function tone(freq, start, dur, { type = 'square', gain = 0.08, endFreq = null } = {}) {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, start);
+        if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, start + dur);
+        g.gain.setValueAtTime(gain, start);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+        osc.connect(g);
+        g.connect(master);
+        osc.start(start);
+        osc.stop(start + dur + 0.02);
+    }
+
+    // Filtered white noise: the "clack" of a mechanical key or switch
+    function burst(start, dur, { freq = 2000, q = 1, gain = 0.3, filter = 'bandpass' } = {}) {
+        const src = ctx.createBufferSource();
+        src.buffer = noise;
+        src.playbackRate.value = 0.85 + Math.random() * 0.3;
+        const f = ctx.createBiquadFilter();
+        f.type = filter;
+        f.frequency.value = freq;
+        f.Q.value = q;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(gain, start);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+        src.connect(f);
+        f.connect(g);
+        g.connect(master);
+        src.start(start, Math.random() * 0.15, dur + 0.02);
+    }
+
+    const arpeggio = (t, freqs, step, dur, opts) => freqs.forEach((f, i) => tone(f, t + i * step, dur, opts));
+
+    const SOUNDS = {
+        key: t => {
+            burst(t, 0.03, { freq: 1800 + Math.random() * 900, q: 1.4, gain: 0.35 });
+            tone(140 + Math.random() * 40, t, 0.02, { type: 'triangle', gain: 0.06 });
+        },
+        backspace: t => burst(t, 0.035, { freq: 1100, q: 1.4, gain: 0.35 }),
+        enter: t => {
+            burst(t, 0.07, { freq: 650, q: 0.8, gain: 0.45 });
+            tone(90, t, 0.06, { type: 'triangle', gain: 0.12 });
+        },
+        click: t => {
+            burst(t, 0.012, { freq: 3200, filter: 'highpass', gain: 0.28 });
+            burst(t + 0.04, 0.01, { freq: 2400, filter: 'highpass', gain: 0.14 });
+        },
+        tick: t => tone(1200, t, 0.015, { gain: 0.04 }),
+        toggle: t => { tone(660, t, 0.03, { gain: 0.05 }); tone(990, t + 0.03, 0.03, { gain: 0.05 }); },
+        open: t => arpeggio(t, [523, 659, 784], 0.04, 0.05, { gain: 0.04 }),
+        close: t => arpeggio(t, [784, 659, 523], 0.04, 0.05, { gain: 0.04 }),
+        success: t => arpeggio(t, [523, 659, 784, 1047], 0.06, 0.08, { gain: 0.05 }),
+        undo: t => tone(600, t, 0.12, { endFreq: 300, gain: 0.05 }),
+        error: t => {
+            tone(440, t, 0.25, { type: 'triangle', gain: 0.12 });
+            tone(554, t, 0.25, { type: 'triangle', gain: 0.09 });
+        },
+        startup: t => [262, 330, 392, 523, 659].forEach((f, i) =>
+            tone(f, t + i * 0.09, i === 4 ? 0.5 : 0.12, { type: 'triangle', gain: 0.1 })),
+        // Alert chimes
+        reminder: t => arpeggio(t, [880, 1318.5], 0.12, 0.11, { gain: 0.06 }),
+        urgent: t => arpeggio(t, [1046.5, 783.99, 1046.5], 0.12, 0.11, { gain: 0.06 })
+    };
+
+    function play(name, { volume = appSettings.soundVolume } = {}) {
+        if (appSettings.muted) return;
+        const isAlert = name === 'reminder' || name === 'urgent';
+        if (isAlert ? !appSettings.soundChime : !appSettings.uiSounds) return;
+
+        // Collapse duplicate events (e.g. a label click re-dispatched to its input)
+        const nowMs = performance.now();
+        if (nowMs - (lastPlayed[name] || 0) < 25) return;
+        lastPlayed[name] = nowMs;
+
+        try {
+            if (!ensureContext()) return;
+            master.gain.value = volume / 100;
+            SOUNDS[name](ctx.currentTime + 0.005);
+        } catch (e) {
+            // Audio is a nicety; never let it break the app
+        }
+    }
+
+    function unlock() {
+        try { ensureContext(); } catch (e) { /* ignore */ }
+    }
+
+    const msSince = name => performance.now() - (lastPlayed[name] || -Infinity);
+
+    return { play, unlock, msSince };
+})();
+
+const TEXT_INPUT_TYPES = ['text', 'password', 'search', 'email', 'url', 'tel', 'number'];
+
+function isTextEntry(el) {
+    return el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && TEXT_INPUT_TYPES.includes(el.type));
+}
+
+// One set of document-level listeners gives every control its sound
+function setupUiSounds() {
+    document.addEventListener('pointerdown', Sfx.unlock, { capture: true, passive: true });
+    document.addEventListener('keydown', Sfx.unlock, { capture: true, passive: true });
+
+    document.addEventListener('click', (e) => {
+        const el = e.target.closest('button, select, input[type="checkbox"], input[type="radio"]');
+        if (!el || el.disabled) return;
+        // Task checkboxes get their own done/undo jingle from toggleTask
+        if (el.classList.contains('task-check')) return;
+        // Pressing Enter in a form also "clicks" its submit button
+        if (Sfx.msSince('enter') < 80) return;
+        Sfx.play(el.type === 'checkbox' || el.type === 'radio' ? 'toggle' : 'click');
+    }, true);
+
+    document.addEventListener('input', (e) => {
+        const el = e.target;
+        if (isTextEntry(el)) {
+            Sfx.play(e.inputType && e.inputType.startsWith('delete') ? 'backspace' : 'key');
+        } else if (el.type === 'time' || el.tagName === 'SELECT') {
+            Sfx.play('tick');
+        }
+    }, true);
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && isTextEntry(e.target) && e.target.tagName !== 'TEXTAREA') Sfx.play('enter');
+    }, true);
+}
+
+function updateMuteButton() {
+    const btn = document.getElementById('muteBtn');
+    btn.textContent = appSettings.muted ? '🔇 Muted' : '🔊 Sound';
+    btn.setAttribute('aria-pressed', String(appSettings.muted));
+    btn.title = appSettings.muted ? 'Turn sounds back on' : 'Turn all sounds off';
+    btn.classList.toggle('active', appSettings.muted);
 }
 
 function requestNotificationPermission() {
@@ -398,7 +529,7 @@ function renderHeatmap(category) {
         .map(m => `<span class="hm-month" style="grid-column:${m.col} / span 3">${MONTH_NAMES[m.month]}</span>`)
         .join('');
     const dayLabels = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun']
-        .map((label, i) => label ? `<span class="hm-day" style="grid-row:${i + 2}">${label}</span>` : '')
+        .map((label, i) => `<span class="hm-day" style="grid-row:${i + 2}">${label}</span>`)
         .join('');
 
     grid.innerHTML = dayLabels + months + cells;
@@ -499,6 +630,9 @@ function updateDayHeader() {
     document.getElementById('viewDayTitle').textContent =
         viewDay === today ? `Today — ${label}` : viewDay === addDays(today, 1) ? `Tomorrow — ${label}` : label;
 
+    const short = parseDateKey(viewDay).toLocaleDateString([], { weekday: 'short', day: 'numeric' });
+    document.getElementById('mToday').textContent = viewDay === today ? 'Today' : short;
+
     const target = quickAddDay();
     document.getElementById('quickAddTarget').textContent =
         `Quick add puts tasks on ${target === today ? 'today' : formatDayLabel(target)}. Use 📅 Pick Days… for more days.`;
@@ -583,6 +717,7 @@ function setPickerDays(keys) {
 }
 
 function showTaskFormError(msg) {
+    if (msg) Sfx.play('error');
     const el = document.getElementById('taskFormError');
     el.textContent = msg;
     el.classList.toggle('hidden', !msg);
@@ -644,11 +779,12 @@ function toggleTask(id, day = viewDay) {
         const doneOn = task.done[day];
         if (counts[doneOn] > 0) counts[doneOn]--;
         delete task.done[day];
+        Sfx.play('undo');
     } else {
         const today = todayKey();
         task.done[day] = today;
         counts[today] = (counts[today] || 0) + 1;
-        playNotificationChime('reminder');
+        Sfx.play('success');
         showToast(`🎉 "${task.title}" done! Heatmap updated.`, 'success');
     }
 
@@ -718,7 +854,7 @@ function triggerAlert(task, type, day) {
     saveData(appData);
     renderAlerts();
 
-    playNotificationChime(type === 'reminder' || type === 'test' ? 'reminder' : 'urgent');
+    Sfx.play(type === 'reminder' || type === 'test' ? 'reminder' : 'urgent');
     showAlertBanner(alert);
 
     // Native HTML5 Browser Notification (useful when the tab is in the background)
@@ -763,10 +899,11 @@ function renderAlerts() {
     if (!listEl) return;
 
     const unreadCount = appData.alerts.filter(a => !a.read).length;
-    if (badgeEl) {
-        badgeEl.textContent = unreadCount;
-        badgeEl.classList.toggle('has-unread', unreadCount > 0);
-    }
+    [badgeEl, document.getElementById('mAlertBadge')].forEach(el => {
+        if (!el) return;
+        el.textContent = unreadCount;
+        el.classList.toggle('has-unread', unreadCount > 0);
+    });
     if (pillEl) {
         pillEl.textContent = `${unreadCount} new`;
         pillEl.classList.toggle('hidden', unreadCount === 0);
@@ -941,13 +1078,15 @@ function showToast(message, type = 'info') {
 function openModal(id) {
     const m = document.getElementById(id);
     if (!m) return;
+    if (!m.classList.contains('active')) Sfx.play('open');
     m.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
 
 function closeModal(id) {
     const m = document.getElementById(id);
-    if (!m) return;
+    if (!m || !m.classList.contains('active')) return;
+    Sfx.play('close');
     m.classList.remove('active');
     if (!document.querySelector('.modal-overlay.active')) document.body.style.overflow = '';
 }
@@ -1013,6 +1152,11 @@ function setupEventListeners() {
     document.getElementById('prevDayBtn').addEventListener('click', () => selectViewDay(addDays(viewDay, -1)));
     document.getElementById('nextDayBtn').addEventListener('click', () => selectViewDay(addDays(viewDay, 1)));
     document.getElementById('todayBtn').addEventListener('click', () => selectViewDay(todayKey()));
+    // Bottom taskbar navigation (shown on phones)
+    document.getElementById('mPrevDay').addEventListener('click', () => selectViewDay(addDays(viewDay, -1)));
+    document.getElementById('mNextDay').addEventListener('click', () => selectViewDay(addDays(viewDay, 1)));
+    document.getElementById('mToday').addEventListener('click', () => selectViewDay(todayKey()));
+    document.getElementById('mNewTask').addEventListener('click', () => openTaskModal());
     document.getElementById('calPrevMonth').addEventListener('click', () => { calendarMonth = shiftMonth(calendarMonth, -1); renderCalendar(); });
     document.getElementById('calNextMonth').addEventListener('click', () => { calendarMonth = shiftMonth(calendarMonth, 1); renderCalendar(); });
 
@@ -1060,6 +1204,7 @@ function setupEventListeners() {
     // 5. ALERTS
     const showAlertsPanel = () => document.getElementById('alertsPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
     document.getElementById('alertsBtn').addEventListener('click', showAlertsPanel);
+    document.getElementById('mAlerts').addEventListener('click', showAlertsPanel);
 
     document.getElementById('alertBannerViewBtn').addEventListener('click', () => {
         document.getElementById('alertBanner').classList.remove('active');
@@ -1086,6 +1231,9 @@ function setupEventListeners() {
     // 6. SETTINGS
     document.getElementById('settingsBtn').addEventListener('click', () => {
         document.getElementById('soundChimeToggle').checked = appSettings.soundChime !== false;
+        document.getElementById('uiSoundsToggle').checked = appSettings.uiSounds !== false;
+        document.getElementById('soundVolume').value = appSettings.soundVolume;
+        document.getElementById('soundVolumeValue').textContent = `${appSettings.soundVolume}%`;
         document.getElementById('reminderAlertsToggle').checked = appSettings.reminderAlerts !== false;
         document.getElementById('deadlineAlertsToggle').checked = appSettings.deadlineAlerts !== false;
         document.getElementById('overdueFollowUp').value = String(appSettings.overdueFollowUpHours || 0);
@@ -1097,6 +1245,8 @@ function setupEventListeners() {
 
     document.getElementById('saveSettingsBtn').addEventListener('click', () => {
         appSettings.soundChime = document.getElementById('soundChimeToggle').checked;
+        appSettings.uiSounds = document.getElementById('uiSoundsToggle').checked;
+        appSettings.soundVolume = Number(document.getElementById('soundVolume').value);
         appSettings.reminderAlerts = document.getElementById('reminderAlertsToggle').checked;
         appSettings.deadlineAlerts = document.getElementById('deadlineAlertsToggle').checked;
         appSettings.overdueFollowUpHours = Number(document.getElementById('overdueFollowUp').value) || 0;
@@ -1104,6 +1254,19 @@ function setupEventListeners() {
         saveSettings(appSettings);
         closeModal('settingsModal');
         showToast('Alert settings saved!', 'success');
+    });
+
+    document.getElementById('soundVolume').addEventListener('input', (e) => {
+        document.getElementById('soundVolumeValue').textContent = `${e.target.value}%`;
+        // Preview at the new volume before it's saved
+        Sfx.play('key', { volume: Number(e.target.value) });
+    });
+
+    document.getElementById('muteBtn').addEventListener('click', () => {
+        appSettings.muted = !appSettings.muted;
+        saveSettings(appSettings);
+        updateMuteButton();
+        if (!appSettings.muted) Sfx.play('toggle');
     });
 
     document.getElementById('testAlertBtn').addEventListener('click', () => {
@@ -1150,6 +1313,7 @@ function setupEventListeners() {
             renderAll();
         } else if (e.key === SETTINGS_KEY) {
             appSettings = loadSettings();
+            updateMuteButton();
         }
     });
 
@@ -1189,6 +1353,7 @@ function setRoomCreateMode(on) {
 }
 
 function showRoomError(msg) {
+    if (msg) Sfx.play('error');
     const err = document.getElementById('roomErrorMsg');
     err.textContent = msg;
     err.classList.toggle('hidden', !msg);
@@ -1239,6 +1404,9 @@ function enterRoom(roomId, room) {
     updateRoomUI();
     selectViewDay(todayKey());
     renderAll();
+    Sfx.play('startup');
+    // Don't pop up the on-screen keyboard on phones
+    if (window.matchMedia?.('(pointer: fine)').matches) document.getElementById('quickInput').focus();
 }
 
 function handleLeaveRoom() {
@@ -1270,6 +1438,8 @@ function updateRoomUI() {
 // ============================================================
 function init() {
     setupEventListeners();
+    setupUiSounds();
+    updateMuteButton();
     updateRoomUI();
     updateClock();
     renderAll();

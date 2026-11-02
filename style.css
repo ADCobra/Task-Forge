@@ -41,6 +41,9 @@
     --sunken: inset -1px -1px var(--hilite), inset 1px 1px var(--shadow), inset -2px -2px var(--light), inset 2px 2px var(--dkshadow);
     --thin-sunken: inset -1px -1px var(--hilite), inset 1px 1px var(--shadow);
 
+    --taskbar-h: 34px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+
     --font-ui: Tahoma, Verdana, "Segoe UI", Geneva, sans-serif;
     --font-pixel: "VT323", "Courier New", monospace;
 }
@@ -67,7 +70,18 @@ body {
     background-image: radial-gradient(var(--desktop-dot) 1px, transparent 1px);
     background-size: 6px 6px;
     min-height: 100vh;
-    padding-bottom: 44px; /* room for the taskbar */
+    padding-bottom: calc(var(--taskbar-h) + var(--safe-bottom) + 10px); /* room for the taskbar */
+}
+
+/* Touch: no double-tap zoom delay, no grey tap flash */
+button, input, select, label, .cal-day {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+button {
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 button, input, select, textarea {
@@ -98,7 +112,7 @@ u {
 .desktop {
     max-width: 1180px;
     margin: 0 auto;
-    padding: 12px 16px;
+    padding: 12px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
 }
 
 .win {
@@ -374,6 +388,56 @@ input[type="radio"]:checked::after {
     background: var(--text);
 }
 
+.volume-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.volume-row label {
+    margin: 0;
+}
+
+/* Classic trackbar */
+input[type="range"] {
+    flex: 1;
+    appearance: none;
+    -webkit-appearance: none;
+    height: 22px;
+    background: transparent;
+    cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px;
+    background: var(--field);
+    box-shadow: var(--sunken);
+}
+
+input[type="range"]::-moz-range-track {
+    height: 4px;
+    background: var(--field);
+    box-shadow: var(--sunken);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 11px;
+    height: 21px;
+    margin-top: -9px;
+    background: var(--face);
+    box-shadow: var(--raised);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 11px;
+    height: 21px;
+    border: none;
+    border-radius: 0;
+    background: var(--face);
+    box-shadow: var(--raised);
+}
+
 .error-box {
     display: flex;
     gap: 6px;
@@ -496,10 +560,6 @@ input[type="radio"]:checked::after {
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-}
-
-.cal-day:hover:not(:disabled) {
-    border-color: var(--shadow);
 }
 
 .cal-day.today {
@@ -668,12 +728,6 @@ input[type="radio"]:checked::after {
     line-height: 1;
     color: var(--text-muted);
     cursor: pointer;
-}
-
-.alert-dismiss-btn:hover {
-    color: var(--text);
-    box-shadow: var(--raised);
-    background: var(--face);
 }
 
 /* ============================================================
@@ -893,7 +947,14 @@ input[type="radio"]:checked::after {
 
 .hm-day {
     grid-column: 1;
-    align-self: center;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    /* Keep weekday labels visible while the graph scrolls sideways */
+    position: sticky;
+    left: -6px;
+    z-index: 1;
+    background: var(--field);
 }
 
 .hm-cell {
@@ -911,10 +972,6 @@ input[type="radio"]:checked::after {
 .hm-cell.today {
     outline: 1px solid var(--text);
     outline-offset: 0;
-}
-
-.hm-cell:hover {
-    outline: 1px solid var(--select);
 }
 
 /* Task list */
@@ -945,10 +1002,6 @@ input[type="radio"]:checked::after {
 
 .task-item:last-child {
     border-bottom: none;
-}
-
-.task-item:hover {
-    background: #eef2ff;
 }
 
 .task-check {
@@ -1048,8 +1101,8 @@ input[type="radio"]:checked::after {
     display: flex;
     align-items: center;
     gap: 6px;
-    height: 34px;
-    padding: 3px 4px;
+    height: calc(var(--taskbar-h) + var(--safe-bottom));
+    padding: 3px 4px calc(3px + var(--safe-bottom));
     background: var(--face);
     box-shadow: inset 0 1px var(--light), inset 0 2px var(--hilite), 0 -1px var(--shadow);
 }
@@ -1062,6 +1115,15 @@ input[type="radio"]:checked::after {
     height: 26px;
     padding: 0 8px;
     box-shadow: var(--raised);
+}
+
+.taskbar-nav {
+    display: none;
+    gap: 4px;
+}
+
+.taskbar-day {
+    min-width: 64px;
 }
 
 .taskbar-ticker {
@@ -1119,7 +1181,7 @@ input[type="radio"]:checked::after {
 .alert-banner {
     position: fixed;
     right: 12px;
-    bottom: 46px;
+    bottom: calc(var(--taskbar-h) + var(--safe-bottom) + 12px);
     z-index: 950;
     width: min(330px, calc(100vw - 24px));
     padding: 8px 10px 10px;
@@ -1176,8 +1238,13 @@ input[type="radio"]:checked::after {
     cursor: pointer;
 }
 
-.btn-banner-close:hover {
-    border-color: var(--dkshadow);
+/* Hover-only effects, so they don't stick after a tap on touch screens */
+@media (hover: hover) {
+    .cal-day:hover:not(:disabled) { border-color: var(--shadow); }
+    .alert-dismiss-btn:hover { color: var(--text); box-shadow: var(--raised); background: var(--face); }
+    .task-item:hover { background: #eef2ff; }
+    .hm-cell:hover { outline: 1px solid var(--select); }
+    .btn-banner-close:hover { border-color: var(--dkshadow); }
 }
 
 /* ============================================================
@@ -1248,7 +1315,7 @@ input[type="radio"]:checked::after {
 .toast-container {
     position: fixed;
     left: 12px;
-    bottom: 46px;
+    bottom: calc(var(--taskbar-h) + var(--safe-bottom) + 12px);
     z-index: 960;
     display: flex;
     flex-direction: column;
@@ -1302,9 +1369,119 @@ input[type="radio"]:checked::after {
     }
 }
 
+/* Touch screens: finger-sized targets */
+@media (pointer: coarse), (max-width: 560px) {
+    .btn {
+        min-height: 36px;
+    }
+
+    .btn-small {
+        min-height: 34px;
+        padding: 4px 10px;
+    }
+
+    .btn-small:active,
+    .btn-small.active {
+        padding: 5px 9px 3px 11px;
+    }
+
+    /* 16px+ text stops iOS Safari zooming in when a field is focused */
+    .field {
+        min-height: 38px;
+        font-size: 16px;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: 20px;
+        height: 20px;
+    }
+
+    input[type="checkbox"]:checked::after {
+        width: 5px;
+        height: 10px;
+    }
+
+    input[type="radio"]:checked::after {
+        width: 8px;
+        height: 8px;
+    }
+
+    .radio,
+    .checkbox {
+        min-height: 34px;
+    }
+
+    .cal-day {
+        height: 40px;
+    }
+
+    .title-btn,
+    .btn-collapse {
+        width: 30px;
+        height: 24px;
+        font-size: 14px;
+    }
+
+    .task-item {
+        padding: 10px 6px;
+        align-items: center;
+    }
+
+    .task-check {
+        margin-top: 0;
+    }
+
+    .task-action-btn,
+    .alert-dismiss-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 16px;
+    }
+
+    .tray-btn {
+        width: 30px;
+        height: 24px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+        width: 18px;
+    }
+}
+
+/* Phones */
 @media (max-width: 560px) {
+    :root {
+        --taskbar-h: 48px;
+    }
+
     .desktop {
-        padding: 8px;
+        padding-top: 8px;
+        padding-left: max(8px, env(safe-area-inset-left));
+        padding-right: max(8px, env(safe-area-inset-right));
+    }
+
+    .app-header .title-bar {
+        font-size: 13px;
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .toolbar-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .hit-counter {
+        justify-content: center;
+    }
+
+    .day-title {
+        flex-basis: 100%;
+        margin: 4px 0 0;
     }
 
     .stats-bar,
@@ -1312,20 +1489,115 @@ input[type="radio"]:checked::after {
         grid-template-columns: repeat(2, 1fr);
     }
 
+    .stat-value {
+        font-size: 30px;
+    }
+
+    .quick-input {
+        flex-basis: 100%;
+    }
+
+    .quick-row .btn {
+        flex: 1;
+    }
+
+    .quick-meta .inline-label {
+        flex: 1 1 140px;
+    }
+
+    .quick-meta .inline-label .field {
+        flex: 1;
+        min-width: 0;
+    }
+
     .form-row {
         grid-template-columns: 1fr;
     }
 
-    .hit-counter {
-        margin-left: auto;
-    }
-
+    /* Bottom bar becomes thumb-reach navigation */
+    .taskbar-start,
     .taskbar-ticker {
         display: none;
     }
 
     .taskbar {
         justify-content: space-between;
+    }
+
+    .taskbar-nav {
+        display: flex;
+        flex: 1;
+    }
+
+    .taskbar-nav .btn {
+        flex: 1;
+        min-width: 0;
+        min-height: 38px;
+        font-size: 15px;
+    }
+
+    .taskbar-nav .taskbar-day {
+        flex: 2;
+        font-size: 13px;
+    }
+
+    .taskbar-tray {
+        height: 38px;
+        gap: 6px;
+    }
+
+    #taskbarClock {
+        display: none;
+    }
+
+    /* Big dialogs go full screen, buttons stay reachable */
+    .modal-overlay {
+        padding: 0;
+        align-items: stretch;
+    }
+
+    .modal:not(.modal-sm) {
+        max-width: none;
+        max-height: none;
+        height: 100%;
+        padding-bottom: calc(3px + var(--safe-bottom));
+    }
+
+    .modal-sm {
+        align-self: center;
+        margin: 0 8px;
+    }
+
+    .modal:not(.modal-sm) .modal-footer {
+        position: sticky;
+        bottom: -8px;
+        margin: 12px -8px -8px;
+        padding: 8px;
+        background: var(--face);
+        box-shadow: 0 -1px var(--shadow), 0 -2px var(--hilite);
+    }
+
+    .modal-footer .btn {
+        flex: 1;
+    }
+
+    /* Toasts at the top so they don't cover the alert balloon or bottom bar */
+    .toast-container {
+        top: calc(8px + env(safe-area-inset-top, 0px));
+        bottom: auto;
+        left: 8px;
+        right: 8px;
+        max-width: none;
+    }
+
+    .alert-banner {
+        right: 8px;
+        left: 8px;
+        width: auto;
+    }
+
+    .best-viewed {
+        display: none;
     }
 }
 

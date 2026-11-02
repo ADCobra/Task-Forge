@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#000080">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="TaskForge">
     <title>TaskForge 98 — Retro Task Tracker</title>
     <meta name="description" content="TaskForge is a retro, 90s-style task tracker with a day-picker calendar, Codeforces-style activity heatmaps, and live dashboard alerts for Sports, Chores, and Productivity.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,7 +25,8 @@
                 <div class="toolbar-buttons">
                     <button type="button" class="btn" id="addTaskBtn">📝 <span><u>N</u>ew Task…</span></button>
                     <button type="button" class="btn" id="alertsBtn" title="Jump to alerts">🔔 Alerts <span class="count-badge" id="unreadAlertBadge">0</span></button>
-                    <button type="button" class="btn" id="settingsBtn" title="Alert settings">⚙️ Settings</button>
+                    <button type="button" class="btn" id="settingsBtn" title="Alert & sound settings">⚙️ Settings</button>
+                    <button type="button" class="btn" id="muteBtn" title="Turn all sounds off" aria-pressed="false">🔊 Sound</button>
                 </div>
                 <div class="hit-counter" id="streakBadge" title="Combined daily streak across all categories">
                     <span class="hit-counter-label">STREAK</span>
@@ -39,8 +43,11 @@
                 <section class="win" id="calendarWindow">
                     <div class="title-bar">
                         <span class="title-bar-text">📅 Calendar</span>
+                        <div class="title-bar-controls">
+                            <button type="button" class="btn-collapse" data-target="calendar" aria-label="Minimize Calendar" title="Minimize">_</button>
+                        </div>
                     </div>
-                    <div class="win-body">
+                    <div class="win-body" id="calendar-body">
                         <div class="cal-nav">
                             <button type="button" class="btn btn-small" id="calPrevMonth" aria-label="Previous month">◀</button>
                             <span class="cal-month-title" id="calMonthTitle">Month</span>
@@ -60,8 +67,11 @@
                     <div class="title-bar">
                         <span class="title-bar-text">🔔 Alerts</span>
                         <span class="title-pill hidden" id="alertsUnreadPill">0 new</span>
+                        <div class="title-bar-controls">
+                            <button type="button" class="btn-collapse" data-target="alerts" aria-label="Minimize Alerts" title="Minimize">_</button>
+                        </div>
                     </div>
-                    <div class="win-body">
+                    <div class="win-body" id="alerts-body">
                         <div class="button-row">
                             <button type="button" class="btn btn-small" id="markAlertsReadBtn">Mark all read</button>
                             <button type="button" class="btn btn-small" id="clearAlertsBtn">Clear</button>
@@ -109,7 +119,7 @@
                         <form id="quickAddForm" class="quick-add group-box" autocomplete="off">
                             <span class="group-box-label">Quick Add</span>
                             <div class="quick-row">
-                                <input type="text" id="quickInput" class="field quick-input" placeholder="Type a task and press Enter… (e.g. Morning 5km run)" required autofocus>
+                                <input type="text" id="quickInput" class="field quick-input" placeholder="Type a task and press Enter… (e.g. Morning 5km run)" required>
                                 <button type="submit" class="btn btn-default">Add</button>
                                 <button type="button" class="btn" id="quickPickDaysBtn" title="Choose several days on a calendar">📅 Pick Days…</button>
                             </div>
@@ -238,6 +248,13 @@
     <!-- TASKBAR -->
     <footer class="taskbar">
         <span class="taskbar-start">⚡ <b>TaskForge</b></span>
+        <nav class="taskbar-nav" aria-label="Quick navigation">
+            <button type="button" class="btn btn-small" id="mPrevDay" aria-label="Previous day">◀</button>
+            <button type="button" class="btn btn-small taskbar-day" id="mToday" title="Go to today">Today</button>
+            <button type="button" class="btn btn-small" id="mNextDay" aria-label="Next day">▶</button>
+            <button type="button" class="btn btn-small" id="mNewTask" aria-label="New task">＋</button>
+            <button type="button" class="btn btn-small" id="mAlerts" aria-label="Alerts">🔔<span class="count-badge" id="mAlertBadge">0</span></button>
+        </nav>
         <div class="taskbar-ticker sunken" aria-hidden="true">
             <span>★ Welcome to TaskForge 98! ★ Click a day on the calendar to see its tasks ★ Use 📅 Pick Days… to repeat a task on any days you like ★ Tick tasks off to grow your heatmap ★</span>
         </div>
@@ -355,8 +372,18 @@
                 <p class="info-text">Alerts appear in the <b>Alerts</b> window, as a pop-up balloon, with an optional chime, and as a desktop notification if your browser allows it.</p>
 
                 <fieldset class="group-box">
-                    <legend>Alerts</legend>
+                    <legend>Sound</legend>
+                    <label class="checkbox"><input type="checkbox" id="uiSoundsToggle" checked> Retro click &amp; typing sounds</label>
                     <label class="checkbox"><input type="checkbox" id="soundChimeToggle" checked> Play a chime when an alert fires</label>
+                    <div class="form-group volume-row">
+                        <label for="soundVolume">Volume:</label>
+                        <input type="range" id="soundVolume" min="0" max="100" step="5" value="60">
+                        <span id="soundVolumeValue">60%</span>
+                    </div>
+                </fieldset>
+
+                <fieldset class="group-box">
+                    <legend>Alerts</legend>
                     <label class="checkbox"><input type="checkbox" id="reminderAlertsToggle" checked> Reminder alerts (before a task is due)</label>
                     <label class="checkbox"><input type="checkbox" id="deadlineAlertsToggle" checked> Deadline alerts (when a task is due)</label>
                     <div class="form-group">
