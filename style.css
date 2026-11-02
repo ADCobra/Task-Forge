@@ -1401,6 +1401,8 @@ body {
 .form-group input[type="text"],
 .form-group input[type="email"],
 .form-group input[type="datetime-local"],
+.form-group input[type="time"],
+.form-group select,
 .form-group textarea {
     width: 100%;
     padding: 11px 14px;
@@ -1415,6 +1417,7 @@ body {
 }
 
 .form-group input:focus,
+.form-group select:focus,
 .form-group textarea:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-glow);
@@ -1500,6 +1503,15 @@ body {
     cursor: pointer;
     font-size: 0.86rem;
     color: var(--text-secondary);
+}
+
+.form-group .checkbox-label {
+    display: flex;
+    margin-bottom: 0;
+    font-size: 0.86rem;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
 }
 
 .checkbox-label input {
@@ -1700,6 +1712,39 @@ body {
     line-height: 1.6;
     color: var(--text-primary);
     margin-bottom: 18px;
+    white-space: pre-line;
+}
+
+.email-task-box.overdue {
+    border-left: 3px solid var(--priority-high);
+}
+
+/* Delivery status */
+.delivery-pill {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+}
+
+.delivery-pill.sent { color: var(--sports-color); border-color: var(--sports-border); background: var(--sports-bg); }
+.delivery-pill.pending { color: var(--chores-color); border-color: var(--chores-border); background: var(--chores-bg); }
+.delivery-pill.failed { color: var(--prod-color); border-color: var(--prod-border); background: var(--prod-bg); }
+
+.email-delivery-status {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
 }
 
 .email-task-box {
@@ -1767,6 +1812,79 @@ body {
 
 .advanced-fields {
     margin-top: 14px;
+}
+
+.email-alerts-settings {
+    margin-top: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px 14px;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.email-alerts-settings legend {
+    padding: 0 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.email-alerts-settings .form-group {
+    margin-bottom: 12px;
+}
+
+.digest-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.form-group.digest-row input[type="time"] {
+    width: auto;
+    padding: 6px 10px;
+}
+
+.form-group input:disabled {
+    opacity: 0.45;
+}
+
+.email-alerts-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.email-alerts-actions .btn-ghost:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.test-email-status {
+    margin-top: 10px;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.test-email-status.hidden { display: none; }
+.test-email-status.sent { color: var(--sports-color); border-color: var(--sports-border); background: var(--sports-bg); }
+.test-email-status.pending { color: var(--chores-color); border-color: var(--chores-border); background: var(--chores-bg); }
+.test-email-status.failed { color: var(--prod-color); border-color: var(--prod-border); background: var(--prod-bg); }
+
+.email-alerts-note {
+    margin-top: 10px;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+.email-alerts-note code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent-light);
 }
 
 /* ============================================================

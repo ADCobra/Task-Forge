@@ -614,6 +614,53 @@
                     </label>
                 </div>
 
+                <fieldset class="email-alerts-settings">
+                    <legend>📧 Email Alerts</legend>
+
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="reminderAlertsToggle" checked>
+                            <span class="checkmark"></span>
+                            Reminder emails (at each task's reminder time)
+                        </label>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="deadlineAlertsToggle" checked>
+                            <span class="checkmark"></span>
+                            Deadline emails (when a task's deadline is reached)
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="overdueFollowUp">Overdue Follow-ups</label>
+                        <select id="overdueFollowUp">
+                            <option value="0">Off</option>
+                            <option value="1">Every hour (max 3)</option>
+                            <option value="3">Every 3 hours (max 3)</option>
+                            <option value="6">Every 6 hours (max 3)</option>
+                            <option value="24">Every day (max 3)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group digest-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="digestToggle">
+                            <span class="checkmark"></span>
+                            Daily digest email of overdue &amp; due-today tasks at
+                        </label>
+                        <input type="time" id="digestTime" value="08:00" aria-label="Daily digest time">
+                    </div>
+
+                    <div class="email-alerts-actions">
+                        <button type="button" class="btn-ghost" id="sendTestEmailBtn">✉️ Send Test Email</button>
+                        <button type="button" class="btn-ghost" id="sendDigestNowBtn">📋 Send Digest Now</button>
+                    </div>
+                    <div class="test-email-status hidden" id="testEmailStatus" role="status"></div>
+                    <p class="email-alerts-note">Alerts are sent while TaskForge is open in a browser tab. Alerts missed while it was closed are sent the next time you open it.</p>
+                </fieldset>
+
                 <details class="advanced-email-settings">
                     <summary>Optional: Connect EmailJS for Real Remote Emails</summary>
                     <div class="advanced-fields">
@@ -629,6 +676,7 @@
                             <label for="emailjsTemplateId">EmailJS Template ID</label>
                             <input type="text" id="emailjsTemplateId" placeholder="e.g. template_task_alert">
                         </div>
+                        <p class="email-alerts-note">Template variables: <code>{{to_email}}</code> (set as the template's "To Email"), <code>{{subject}}</code>, <code>{{message}}</code>, <code>{{task_title}}</code>, <code>{{task_category}}</code>, <code>{{task_deadline}}</code>.</p>
                     </div>
                 </details>
 
